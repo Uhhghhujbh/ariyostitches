@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth } from './firebase-config';
+import { auth } from './firebase-config';
 import { ApiService } from './services/api';
 // db import kept for auth, but Firestore imports removed
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';

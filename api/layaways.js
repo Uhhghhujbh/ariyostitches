@@ -4,11 +4,23 @@ import { withMiddleware } from './lib/middleware.js';
 import { sanitizeString } from './lib/validators.js';
 
 const handler = async (req, res) => {
-    // GET /api/layaways?phone=x&email=y
+    // GET /api/layaways?phone=x&email=y OR ?id=z
     if (req.method === 'GET') {
-        const { phone, email } = req.query;
+        const { phone, email, id } = req.query;
+
+        if (id) {
+            try {
+                const docRef = db.collection('layaways').doc(id);
+                const doc = await docRef.get();
+                if (!doc.exists) return res.status(404).json({ error: 'Layaway not found' });
+                return res.status(200).json({ id: doc.id, ...doc.data() });
+            } catch (error) {
+                return res.status(500).json({ error: 'Failed to fetch layaway' });
+            }
+        }
+
         if (!phone && !email) {
-            return res.status(400).json({ error: 'Phone or email required' });
+            return res.status(400).json({ error: 'Phone, email, or ID required' });
         }
 
         try {

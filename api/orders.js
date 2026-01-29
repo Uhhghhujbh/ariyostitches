@@ -58,36 +58,36 @@ const handler = async (req, res) => {
         }
     }
 
+    // GET /api/orders?id=:id (Public Receipt)
+    if (req.method === 'GET') {
+        const { id } = req.query;
+        if (id) {
+            try {
+                const docRef = db.collection('orders').doc(id);
+                const doc = await docRef.get();
+
+                if (!doc.exists) {
+                    // Check layaways if not found in orders
+                    const layawayRef = db.collection('layaways').doc(id);
+                    const layawayDoc = await layawayRef.get();
+                    if (layawayDoc.exists) {
+                        return res.status(200).json({ type: 'layaway', id: layawayDoc.id, ...layawayDoc.data() });
+                    }
+                    return res.status(404).json({ error: 'Order not found' });
+                }
+
+                return res.status(200).json({ type: 'order', id: doc.id, ...doc.data() });
+            } catch (error) {
+                return res.status(500).json({ error: 'Failed to fetch order' });
+            }
+        }
+        // If no ID, continue to admin check (for listing all orders, if implemented later, or just fail)
+    }
+
     // AUTH REQUIRED FOR ADMIN ACTIONS
     if (!requireAdmin(req, res)) return;
 
-    // GET /api/admin/orders/:id (Verify Order)
-    if (req.method === 'GET') {
-        const { id } = req.query; // Vercel uses query for path params in some configs, or we use path segments?
-        // In standard Vercel serverless, /api/orders.js handles /api/orders?id=xxx
-        // If we want /api/orders/id, we need dynamic routes.
-        // For simplicity, I'll use query params ?id=xxx
-        if (!id) return res.status(400).json({ error: 'Missing ID' });
 
-        try {
-            const docRef = db.collection('orders').doc(id);
-            const doc = await docRef.get();
-
-            if (!doc.exists) {
-                // Check layaways if not found in orders (as per original logic)
-                const layawayRef = db.collection('layaways').doc(id);
-                const layawayDoc = await layawayRef.get();
-                if (layawayDoc.exists) {
-                    return res.status(200).json({ type: 'layaway', id: layawayDoc.id, ...layawayDoc.data() });
-                }
-                return res.status(404).json({ error: 'Order not found' });
-            }
-
-            return res.status(200).json({ type: 'order', id: doc.id, ...doc.data() });
-        } catch (error) {
-            return res.status(500).json({ error: 'Failed to fetch order' });
-        }
-    }
 
     // PUT /api/admin/orders/:id (Update Status/Scanned)
     if (req.method === 'PUT') {

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { db } from './firebase-config';
-import { doc, getDoc } from 'firebase/firestore';
+// import { db } from './firebase-config'; // Removed
+// import { doc, getDoc } from 'firebase/firestore'; // Removed
+import { ApiService } from './services/api';
 import QRCode from 'react-qr-code';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -16,8 +17,10 @@ export default function Success() {
     useEffect(() => {
         const fetchOrder = async () => {
             try {
-                const docSnap = await getDoc(doc(db, "orders", id));
-                if (docSnap.exists()) setOrder(docSnap.data());
+                // const docSnap = await getDoc(doc(db, "orders", id));
+                // if (docSnap.exists()) setOrder(docSnap.data());
+                const response = await ApiService.getOrder(id);
+                setOrder(response.data);
             } catch (error) {
                 console.error("Error fetching order:", error);
             } finally {

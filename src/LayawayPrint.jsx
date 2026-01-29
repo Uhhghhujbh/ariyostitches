@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { db } from './firebase-config';
-import { doc, getDoc } from 'firebase/firestore';
+// import { db } from './firebase-config'; // Removed
+// import { doc, getDoc } from 'firebase/firestore'; // Removed
+import { ApiService } from './services/api';
 import QRCode from 'react-qr-code';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -16,8 +17,10 @@ export default function LayawayPrint() {
     useEffect(() => {
         const fetchLayaway = async () => {
             try {
-                const docSnap = await getDoc(doc(db, "layaways", id));
-                if (docSnap.exists()) setLayaway({ id: docSnap.id, ...docSnap.data() });
+                // const docSnap = await getDoc(doc(db, "layaways", id));
+                // if (docSnap.exists()) setLayaway({ id: docSnap.id, ...docSnap.data() });
+                const response = await ApiService.getLayawayById(id);
+                setLayaway(response.data);
             } catch (error) {
                 console.error("Error fetching layaway:", error);
             } finally {

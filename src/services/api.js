@@ -33,7 +33,8 @@ export const ApiService = {
 
     // Orders
     createOrder: (orderData) => api.post('/orders', orderData),
-    verifyOrder: (id) => api.get(`/admin/orders?id=${id}`),
+    getOrder: (id) => api.get(`/orders?id=${id}`),
+    verifyOrder: (id) => api.get(`/admin/orders?id=${id}`), // The endpoint now handles filtering manually or we can change this call to use getOrder but verifyOrder was admin intended. Actually api/orders handles id fetch publicly now so this verify call can just use the same logic or calling /orders?id=xxx via admin page still works because the endpoint is the same. Wait, admin verify uses the same GET logic now.
     updateOrderStatus: (id, status, scanned) => api.put(`/admin/orders?id=${id}`, { status, scanned }),
 
     // Messages
@@ -44,6 +45,7 @@ export const ApiService = {
 
     // Layaways
     getLayaways: (phone, email) => api.get(`/layaways?phone=${phone || ''}&email=${email || ''}`),
+    getLayawayById: (id) => api.get(`/layaways?id=${id}`),
     createLayaway: (data) => api.post('/layaways', data),
     recordPayment: (id, paymentData) => api.put(`/layaways?id=${id}`, paymentData)
 };
