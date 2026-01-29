@@ -404,19 +404,16 @@ export default function Admin() {
                                                 <Trash2 size={18} />
                                             </button>
                                         </div>
-                                        </div>
                                     </div>
+
                                     <p className="text-gray-700 dark:text-gray-300">{msg.message}</p>
                                     <p className="text-gray-500 text-xs mt-4">
                                         {new Date(msg.createdAt).toLocaleString()}
                                     </p>
                                 </div>
-                    ))}
+                            ))}
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
-    )
-}
-        </div >
-    );
-}
+            )
+            }
