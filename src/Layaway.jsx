@@ -98,15 +98,15 @@ export default function Layaway() {
     };
 
     return (
-        <div className="min-h-screen bg-onyx-950 pt-24 pb-20">
+        <div className="min-h-screen bg-ivory dark:bg-onyx-950 pt-24 pb-20 transition-colors duration-300">
             {/* Header */}
             <header className="text-center py-12 px-6">
-                <p className="font-script text-gold-400 text-2xl mb-4">Flexible Payments</p>
-                <h1 className="font-display text-4xl md:text-5xl font-light text-white mb-4 tracking-wide">
+                <p className="font-script text-gold-600 dark:text-gold-400 text-2xl mb-4">Flexible Payments</p>
+                <h1 className="font-display text-4xl md:text-5xl font-light text-onyx-900 dark:text-white mb-4 tracking-wide">
                     PAY SMALL-SMALL
                 </h1>
                 <div className="divider-gold mb-8" />
-                <p className="font-display text-lg text-gray-400 font-light italic max-w-2xl mx-auto">
+                <p className="font-display text-lg text-gray-600 dark:text-gray-400 font-light italic max-w-2xl mx-auto">
                     Pay for your garments in comfortable installments
                 </p>
             </header>
@@ -114,8 +114,8 @@ export default function Layaway() {
             <div className="max-w-2xl mx-auto px-6">
                 {/* SEARCH VIEW */}
                 {view === 'search' && (
-                    <div className="elegant-frame animate-fade-up">
-                        <h2 className="font-display text-xl text-white mb-8 text-center tracking-wide">
+                    <div className="elegant-frame animate-fade-up bg-white dark:bg-onyx-900 border border-onyx-900/10 dark:border-white/10">
+                        <h2 className="font-display text-xl text-onyx-900 dark:text-white mb-8 text-center tracking-wide">
                             CHECK YOUR STATUS
                         </h2>
 
@@ -125,7 +125,7 @@ export default function Layaway() {
                                 placeholder="ENTER PHONE NUMBER"
                                 value={searchPhone}
                                 onChange={(e) => setSearchPhone(e.target.value)}
-                                className="flex-1 text-center"
+                                className="flex-1 text-center bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 outline-none"
                             />
                             <button onClick={handleSearch} className="btn-filled px-8">
                                 <Search size={18} />
@@ -134,11 +134,11 @@ export default function Layaway() {
 
                         {searched && layaways.length === 0 && (
                             <div className="text-center py-8">
-                                <p className="text-gray-500 mb-4">No layaway found for this number</p>
+                                <p className="text-gray-600 dark:text-gray-500 mb-4">No layaway found for this number</p>
                             </div>
                         )}
 
-                        <div className="border-t border-white/10 pt-8 mt-8 text-center">
+                        <div className="border-t border-onyx-900/10 dark:border-white/10 pt-8 mt-8 text-center">
                             <p className="text-gray-500 text-sm mb-6">Need to start a new layaway?</p>
                             <button onClick={() => setView('create')} className="btn-elegant w-full">
                                 <Plus size={16} className="mr-2" /> Create New Layaway
@@ -151,8 +151,8 @@ export default function Layaway() {
                 {view === 'list' && (
                     <div className="animate-fade-up">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="font-display text-xl text-white tracking-wide">YOUR LAYAWAYS</h2>
-                            <button onClick={() => setView('search')} className="text-gold-400 text-sm">
+                            <h2 className="font-display text-xl text-onyx-900 dark:text-white tracking-wide">YOUR LAYAWAYS</h2>
+                            <button onClick={() => setView('search')} className="text-gold-600 dark:text-gold-400 text-sm">
                                 ← Back
                             </button>
                         </div>
@@ -163,15 +163,15 @@ export default function Layaway() {
                                 const isCompleted = layaway.status === 'completed';
 
                                 return (
-                                    <div key={layaway.id} className="border border-white/10 p-8">
+                                    <div key={layaway.id} className="border border-onyx-900/10 dark:border-white/10 p-8 bg-white dark:bg-onyx-900">
                                         <div className="flex justify-between items-start mb-6">
                                             <div>
-                                                <h3 className="font-display text-xl text-white">
+                                                <h3 className="font-display text-xl text-onyx-900 dark:text-white">
                                                     {layaway.service?.name}
                                                 </h3>
-                                                <p className="text-gray-500 text-sm">{layaway.service?.description}</p>
+                                                <p className="text-gray-600 dark:text-gray-500 text-sm">{layaway.service?.description}</p>
                                             </div>
-                                            <span className={`text-xs tracking-widest uppercase ${isCompleted ? 'text-green-400' : 'text-gold-400'
+                                            <span className={`text-xs tracking-widest uppercase ${isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gold-600 dark:text-gold-400'
                                                 }`}>
                                                 {isCompleted ? '✓ Complete' : 'Active'}
                                             </span>
@@ -191,8 +191,8 @@ export default function Layaway() {
                                         {/* Amounts */}
                                         <div className="grid grid-cols-3 gap-4 mb-6 text-center">
                                             <div>
-                                                <p className="text-gray-600 text-xs uppercase tracking-wider">Total</p>
-                                                <p className="font-display text-lg text-white">
+                                                <p className="text-gray-600 dark:text-gray-500 text-xs uppercase tracking-wider">Total</p>
+                                                <p className="font-display text-lg text-onyx-900 dark:text-white">
                                                     ₦{layaway.totalAmount.toLocaleString()}
                                                 </p>
                                             </div>
@@ -203,8 +203,8 @@ export default function Layaway() {
                                                 </p>
                                             </div>
                                             <div>
-                                                <p className="text-gray-600 text-xs uppercase tracking-wider">Balance</p>
-                                                <p className="font-display text-lg text-gold-400">
+                                                <p className="text-gray-600 dark:text-gray-500 text-xs uppercase tracking-wider">Balance</p>
+                                                <p className="font-display text-lg text-gold-600 dark:text-gold-400">
                                                     ₦{layaway.remainingAmount.toLocaleString()}
                                                 </p>
                                             </div>
@@ -234,10 +234,10 @@ export default function Layaway() {
 
                 {/* CREATE VIEW */}
                 {view === 'create' && (
-                    <div className="elegant-frame animate-fade-up">
+                    <div className="elegant-frame animate-fade-up bg-white dark:bg-onyx-900 border border-onyx-900/10 dark:border-white/10">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="font-display text-xl text-white tracking-wide">NEW LAYAWAY</h2>
-                            <button onClick={() => setView('search')} className="text-gold-400 text-sm">
+                            <h2 className="font-display text-xl text-onyx-900 dark:text-white tracking-wide">NEW LAYAWAY</h2>
+                            <button onClick={() => setView('search')} className="text-gold-600 dark:text-gold-400 text-sm">
                                 Cancel
                             </button>
                         </div>
@@ -248,6 +248,7 @@ export default function Layaway() {
                                     placeholder="SERVICE / ITEM NAME"
                                     value={serviceName}
                                     onChange={(e) => setServiceName(e.target.value)}
+                                    className="bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none"
                                 />
                                 {errors.serviceName && <p className="text-red-400 text-xs mt-1">{errors.serviceName}</p>}
                             </div>
@@ -256,7 +257,7 @@ export default function Layaway() {
                                 value={serviceDesc}
                                 onChange={(e) => setServiceDesc(e.target.value)}
                                 rows={2}
-                                className="resize-none"
+                                className="resize-none bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full outline-none"
                             />
                             <div>
                                 <input
@@ -264,22 +265,23 @@ export default function Layaway() {
                                     placeholder="TOTAL AMOUNT (₦)"
                                     value={totalAmount}
                                     onChange={(e) => setTotalAmount(e.target.value)}
+                                    className="bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none"
                                 />
                                 {errors.totalAmount && <p className="text-red-400 text-xs mt-1">{errors.totalAmount}</p>}
                             </div>
 
-                            <div className="border-t border-white/10 pt-6 mt-6">
+                            <div className="border-t border-onyx-900/10 dark:border-white/10 pt-6 mt-6">
                                 <p className="text-gray-500 text-sm uppercase tracking-wider mb-4">Customer Details</p>
                                 <div className="space-y-6">
                                     <div>
-                                        <input placeholder="FULL NAME" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                                        <input placeholder="FULL NAME" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none" />
                                         {errors.customerName && <p className="text-red-400 text-xs mt-1">{errors.customerName}</p>}
                                     </div>
                                     <div>
-                                        <input placeholder="PHONE NUMBER" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                                        <input placeholder="PHONE NUMBER" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none" />
                                         {errors.customerPhone && <p className="text-red-400 text-xs mt-1">{errors.customerPhone}</p>}
                                     </div>
-                                    <input placeholder="EMAIL (OPTIONAL)" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
+                                    <input placeholder="EMAIL (OPTIONAL)" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none" />
                                 </div>
                             </div>
 
@@ -292,19 +294,19 @@ export default function Layaway() {
 
                 {/* PAY VIEW */}
                 {view === 'pay' && selectedLayaway && (
-                    <div className="elegant-frame animate-fade-up">
+                    <div className="elegant-frame animate-fade-up bg-white dark:bg-onyx-900 border border-onyx-900/10 dark:border-white/10">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="font-display text-xl text-white tracking-wide">MAKE PAYMENT</h2>
-                            <button onClick={() => { setView('list'); setSelectedLayaway(null); }} className="text-gold-400 text-sm">
+                            <h2 className="font-display text-xl text-onyx-900 dark:text-white tracking-wide">MAKE PAYMENT</h2>
+                            <button onClick={() => { setView('list'); setSelectedLayaway(null); }} className="text-gold-600 dark:text-gold-400 text-sm">
                                 Cancel
                             </button>
                         </div>
 
-                        <div className="border border-white/10 p-6 mb-8">
-                            <h3 className="font-display text-lg text-white mb-2">{selectedLayaway.service?.name}</h3>
+                        <div className="border border-onyx-900/10 dark:border-white/10 p-6 mb-8">
+                            <h3 className="font-display text-lg text-onyx-900 dark:text-white mb-2">{selectedLayaway.service?.name}</h3>
                             <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Remaining Balance</span>
-                                <span className="text-gold-400 font-display text-lg">
+                                <span className="text-gray-600 dark:text-gray-500">Remaining Balance</span>
+                                <span className="text-gold-600 dark:text-gold-400 font-display text-lg">
                                     ₦{selectedLayaway.remainingAmount.toLocaleString()}
                                 </span>
                             </div>
@@ -319,7 +321,7 @@ export default function Layaway() {
                                 onChange={(e) => setPaymentAmount(e.target.value)}
                                 min={MIN_PAYMENT}
                                 max={selectedLayaway.remainingAmount}
-                                className="text-center text-2xl font-display"
+                                className="text-center text-2xl font-display bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full outline-none"
                             />
 
                             {/* Quick amounts */}
@@ -328,7 +330,7 @@ export default function Layaway() {
                                     <button
                                         key={amount}
                                         onClick={() => setPaymentAmount(amount.toString())}
-                                        className="flex-1 py-3 border border-white/10 hover:border-gold-400 text-sm transition-colors"
+                                        className="flex-1 py-3 border border-onyx-900/10 dark:border-white/10 hover:border-gold-600 dark:hover:border-gold-400 text-onyx-900 dark:text-white text-sm transition-colors"
                                     >
                                         ₦{amount.toLocaleString()}
                                     </button>

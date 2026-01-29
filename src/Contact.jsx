@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { db } from './firebase-config';
-import { collection, addDoc } from 'firebase/firestore';
+import { ApiService } from './services/api';
 import { Send, CheckCircle, User, Mail, Phone, MessageSquare } from 'lucide-react';
 import { useSecurity } from './security/SecurityProvider';
 
@@ -35,17 +34,14 @@ export default function Contact() {
             await security.rateLimitedAction(async () => {
                 setSending(true);
 
-                // Sanitize inputs
-                const sanitizedData = {
-                    name: security.sanitize.string(form.name),
-                    email: security.sanitize.email(form.email),
-                    phone: security.sanitize.phone(form.phone) || form.phone,
-                    message: security.sanitize.string(form.message),
-                    createdAt: new Date().toISOString(),
-                    read: false
-                };
+                // Send via API
+                await ApiService.sendMessage({
+                    name: form.name,
+                    email: form.email,
+                    phone: form.phone,
+                    message: form.message
+                });
 
-                await addDoc(collection(db, "messages"), sanitizedData);
                 setSent(true);
                 setForm({ name: '', email: '', phone: '', message: '' });
             }, 'api');
@@ -58,13 +54,13 @@ export default function Contact() {
 
     if (sent) {
         return (
-            <div className="min-h-screen bg-onyx-950 pt-24 flex items-center justify-center px-6">
+            <div className="min-h-screen bg-ivory dark:bg-onyx-950 pt-24 flex items-center justify-center px-6 transition-colors duration-300">
                 <div className="text-center animate-fade-up">
                     <div className="w-20 h-20 mx-auto mb-8 border-2 border-green-500/50 rounded-full flex items-center justify-center">
                         <CheckCircle size={48} className="text-green-500" />
                     </div>
-                    <h2 className="font-display text-3xl text-white mb-4">Message Sent!</h2>
-                    <p className="text-gray-400 mb-8">
+                    <h2 className="font-display text-3xl text-onyx-900 dark:text-white mb-4">Message Sent!</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-8">
                         Thank you for reaching out. We'll get back to you soon.
                     </p>
                     <button
@@ -79,15 +75,15 @@ export default function Contact() {
     }
 
     return (
-        <div className="min-h-screen bg-onyx-950 pt-24 pb-20">
+        <div className="min-h-screen bg-ivory dark:bg-onyx-950 pt-24 pb-20 transition-colors duration-300">
             {/* Header */}
             <header className="text-center py-12 px-6">
-                <p className="font-script text-gold-400 text-2xl mb-4">Get In Touch</p>
-                <h1 className="font-display text-4xl md:text-5xl font-light text-white mb-4 tracking-wide">
+                <p className="font-script text-gold-600 dark:text-gold-400 text-2xl mb-4">Get In Touch</p>
+                <h1 className="font-display text-4xl md:text-5xl font-light text-onyx-900 dark:text-white mb-4 tracking-wide">
                     CONTACT US
                 </h1>
                 <div className="divider-gold mb-8" />
-                <p className="font-display text-lg text-gray-400 font-light italic max-w-2xl mx-auto">
+                <p className="font-display text-lg text-gray-600 dark:text-gray-400 font-light italic max-w-2xl mx-auto">
                     Have a question or special request? We'd love to hear from you
                 </p>
             </header>
@@ -143,7 +139,7 @@ export default function Contact() {
                                 value={form.message}
                                 onChange={handleChange}
                                 rows={5}
-                                className={`pl-8 resize-none ${errors.message ? 'border-b-red-500' : ''}`}
+                                className={`pl-8 resize-none text-onyx-900 dark:text-white bg-transparent ${errors.message ? 'border-b-red-500' : ''}`}
                             />
                             {errors.message && <p className="text-red-400 text-xs mt-1">{errors.message}</p>}
                         </div>

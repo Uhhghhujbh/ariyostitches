@@ -78,14 +78,14 @@ export default function Success() {
     }
 
     return (
-        <div className="pt-24 px-4 md:px-6 pb-20 min-h-screen flex flex-col items-center">
+        <div className="pt-24 px-4 md:px-6 pb-20 min-h-screen flex flex-col items-center bg-ivory dark:bg-onyx-950 transition-colors duration-300">
             {/* Success Message */}
             <div className="text-center mb-8 animate-slide-up">
                 <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle size={48} className="text-green-500" />
                 </div>
                 <h2 className="text-3xl md:text-4xl gradient-text font-serif mb-2">Payment Successful!</h2>
-                <p className="text-gray-400">Your order has been confirmed. Download your receipt below.</p>
+                <p className="text-gray-600 dark:text-gray-400">Your order has been confirmed. Download your receipt below.</p>
             </div>
 
             {/* RECEIPT CARD */}

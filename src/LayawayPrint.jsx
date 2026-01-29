@@ -62,7 +62,7 @@ export default function LayawayPrint() {
     const isCompleted = layaway.status === 'completed';
 
     return (
-        <div className="pt-24 px-4 md:px-6 pb-20 min-h-screen flex flex-col items-center">
+        <div className="pt-24 px-4 md:px-6 pb-20 min-h-screen flex flex-col items-center bg-ivory dark:bg-onyx-950 transition-colors duration-300">
             {/* Header */}
             <div className="text-center mb-8 animate-slide-up">
                 <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isCompleted ? 'bg-green-500/20' : 'bg-gold-500/20'
@@ -92,8 +92,8 @@ export default function LayawayPrint() {
             >
                 {/* Header */}
                 <div className={`p-6 text-center text-white ${isCompleted
-                        ? 'bg-gradient-to-r from-green-600 to-green-500'
-                        : 'bg-gradient-to-r from-yellow-600 to-yellow-500'
+                    ? 'bg-gradient-to-r from-green-600 to-green-500'
+                    : 'bg-gradient-to-r from-yellow-600 to-yellow-500'
                     }`}>
                     <img
                         src="/ariyologo.png"
@@ -107,8 +107,8 @@ export default function LayawayPrint() {
                 <div className="p-6">
                     {/* Status Badge */}
                     <div className={`text-center py-2 px-4 rounded-full mb-6 font-bold ${isCompleted
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-yellow-100 text-yellow-700'
                         }`}>
                         {isCompleted ? '✓ FULLY PAID - READY FOR COLLECTION' : '⏳ PAYMENT IN PROGRESS'}
                     </div>

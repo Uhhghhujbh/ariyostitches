@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, auth } from './firebase-config';
-import { collection, addDoc, getDocs, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { ApiService } from './services/api';
 
 const LayawayContext = createContext();
 
@@ -13,17 +12,8 @@ export const LayawayProvider = ({ children }) => {
     // Create new layaway plan
     const createLayaway = async (data) => {
         try {
-            const layawayRef = await addDoc(collection(db, "layaways"), {
-                ...data,
-                totalAmount: data.totalAmount,
-                paidAmount: 0,
-                remainingAmount: data.totalAmount,
-                payments: [],
-                status: 'active', // active, completed, cancelled
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            });
-            return { success: true, id: layawayRef.id };
+            const response = await ApiService.createLayaway(data);
+            return { success: true, id: response.data.id };
         } catch (error) {
             console.error("Error creating layaway:", error);
             return { success: false, error: error.message };
@@ -33,43 +23,25 @@ export const LayawayProvider = ({ children }) => {
     // Make payment on layaway
     const makePayment = async (layawayId, amount, paymentRef) => {
         try {
-            const layawayRef = doc(db, "layaways", layawayId);
-            const layaway = layaways.find(l => l.id === layawayId);
+            const response = await ApiService.recordPayment(layawayId, { amount, paymentRef });
+            const { completed } = response.data;
 
-            if (!layaway) throw new Error("Layaway not found");
+            // Update local state by re-fetching
+            // In a real app we might just update locally, but re-fetching ensures sync
+            const currentLayaway = layaways.find(l => l.id === layawayId);
+            if (currentLayaway) {
+                // Update specific item in state optimistically or partially
+                const newPaid = currentLayaway.paidAmount + amount;
+                const newRem = currentLayaway.totalAmount - newPaid;
 
-            const newPaidAmount = layaway.paidAmount + amount;
-            const newRemainingAmount = layaway.totalAmount - newPaidAmount;
-            const isCompleted = newRemainingAmount <= 0;
+                setLayaways(prev => prev.map(l =>
+                    l.id === layawayId
+                        ? { ...l, paidAmount: newPaid, remainingAmount: newRem, status: completed ? 'completed' : 'active' } // rudimentary update
+                        : l
+                ));
+            }
 
-            const newPayment = {
-                amount,
-                paymentRef,
-                date: new Date().toISOString()
-            };
-
-            await updateDoc(layawayRef, {
-                paidAmount: newPaidAmount,
-                remainingAmount: Math.max(0, newRemainingAmount),
-                payments: [...layaway.payments, newPayment],
-                status: isCompleted ? 'completed' : 'active',
-                updatedAt: new Date().toISOString()
-            });
-
-            // Update local state
-            setLayaways(prev => prev.map(l =>
-                l.id === layawayId
-                    ? {
-                        ...l,
-                        paidAmount: newPaidAmount,
-                        remainingAmount: Math.max(0, newRemainingAmount),
-                        payments: [...l.payments, newPayment],
-                        status: isCompleted ? 'completed' : 'active'
-                    }
-                    : l
-            ));
-
-            return { success: true, completed: isCompleted };
+            return { success: true, completed };
         } catch (error) {
             console.error("Error making payment:", error);
             return { success: false, error: error.message };
@@ -80,30 +52,15 @@ export const LayawayProvider = ({ children }) => {
     const fetchLayaways = async (identifier) => {
         setLoading(true);
         try {
-            // Try phone first, then email
-            let q = query(
-                collection(db, "layaways"),
-                where("customer.phone", "==", identifier)
+            // Determine if phone or email
+            const isEmail = identifier.includes('@');
+            const response = await ApiService.getLayaways(
+                isEmail ? null : identifier,
+                isEmail ? identifier : null
             );
-            let querySnapshot = await getDocs(q);
 
-            if (querySnapshot.empty) {
-                q = query(
-                    collection(db, "layaways"),
-                    where("customer.email", "==", identifier)
-                );
-                querySnapshot = await getDocs(q);
-            }
-
-            const items = [];
-            querySnapshot.forEach((doc) => {
-                items.push({ id: doc.id, ...doc.data() });
-            });
-
-            // Sort by date
-            items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setLayaways(items);
-            return items;
+            setLayaways(response.data);
+            return response.data;
         } catch (error) {
             console.error("Error fetching layaways:", error);
             return [];

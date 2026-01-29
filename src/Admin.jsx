@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './firebase-config';
-import { collection, addDoc, doc, getDoc, updateDoc, getDocs, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { ApiService } from './services/api';
+// db import kept for auth, but Firestore imports removed
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useSecurity } from './security/SecurityProvider';
 import {
@@ -64,11 +65,8 @@ export default function Admin() {
     const fetchMessages = async () => {
         setLoadingMessages(true);
         try {
-            const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
-            const snapshot = await getDocs(q);
-            const msgs = [];
-            snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
-            setMessages(msgs);
+            const response = await ApiService.getMessages();
+            setMessages(response.data);
         } catch (error) {
             console.error("Error fetching messages:", error);
         } finally {
@@ -78,7 +76,7 @@ export default function Admin() {
 
     const markAsRead = async (msgId) => {
         try {
-            await updateDoc(doc(db, "messages", msgId), { read: true });
+            await ApiService.markMessageRead(msgId);
             setMessages(prev => prev.map(m => m.id === msgId ? { ...m, read: true } : m));
         } catch (error) {
             console.error("Error marking as read:", error);
@@ -88,7 +86,7 @@ export default function Admin() {
     const deleteMessage = async (msgId) => {
         if (!window.confirm('Delete this message?')) return;
         try {
-            await deleteDoc(doc(db, "messages", msgId));
+            await ApiService.deleteMessage(msgId);
             setMessages(prev => prev.filter(m => m.id !== msgId));
         } catch (error) {
             console.error("Error deleting message:", error);
@@ -123,12 +121,11 @@ export default function Admin() {
 
         setUploading(true);
         try {
-            await addDoc(collection(db, "products"), {
+            await ApiService.addProduct({
                 name: security.sanitize.string(prodName),
                 price: security.sanitize.number(prodPrice),
                 description: security.sanitize.string(prodDesc),
-                image_url: imageUrl.trim(),
-                created_at: new Date()
+                image_url: imageUrl.trim()
             });
 
             alert("Product Added!");
@@ -137,7 +134,7 @@ export default function Admin() {
             setProdDesc('');
             setImageUrl('');
         } catch (e) {
-            alert("Error: " + e.message);
+            alert("Error: " + (e.response?.data?.error || e.message));
         }
         setUploading(false);
     };
@@ -149,36 +146,14 @@ export default function Admin() {
         setVerifiedOrder(null);
 
         try {
-            const orderRef = doc(db, "orders", orderId);
-            let orderSnap = await getDoc(orderRef);
+            const response = await ApiService.verifyOrder(orderId);
+            const data = response.data;
 
-            if (!orderSnap.exists()) {
-                const layawayRef = doc(db, "layaways", orderId);
-                orderSnap = await getDoc(layawayRef);
+            setVerifyStatus('valid');
+            setVerifiedOrder(data);
 
-                if (orderSnap.exists()) {
-                    const data = orderSnap.data();
-                    if (data.status === 'completed') {
-                        setVerifyStatus('valid');
-                        setVerifiedOrder({ type: 'layaway', ...data });
-                        await updateDoc(layawayRef, { scanned: true });
-                    } else {
-                        setVerifyStatus('pending');
-                        setVerifiedOrder({ type: 'layaway', ...data });
-                    }
-                    return;
-                }
-            }
-
-            if (orderSnap.exists()) {
-                const data = orderSnap.data();
-                setVerifyStatus('valid');
-                setVerifiedOrder({ type: 'order', ...data });
-                if (!data.scanned) {
-                    await updateDoc(orderRef, { scanned: true });
-                }
-            } else {
-                setVerifyStatus('invalid');
+            if (!data.scanned) {
+                await ApiService.updateOrderStatus(orderId, undefined, true);
             }
         } catch (e) {
             console.error("Verify error:", e);
@@ -198,8 +173,8 @@ export default function Admin() {
         const loginStatus = security.getLoginStatus?.(email);
 
         return (
-            <div className="pt-32 px-6 min-h-screen flex justify-center">
-                <div className="elegant-frame w-full max-w-sm h-fit animate-fade-up">
+            <div className="pt-32 px-6 min-h-screen bg-ivory dark:bg-onyx-950 flex justify-center transition-colors duration-300">
+                <div className="elegant-frame w-full max-w-sm h-fit animate-fade-up bg-white dark:bg-onyx-900 border border-onyx-900/10 dark:border-white/10">
                     <div className="text-center mb-8">
                         <img src="/ariyologo.png" alt="Ariyo" className="w-16 h-16 rounded-full mx-auto mb-4 border border-gold-400/50" />
                         <h2 className="font-display text-2xl text-gradient-gold">Admin Access</h2>
@@ -224,15 +199,14 @@ export default function Admin() {
                             placeholder="ADMIN EMAIL"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
-                            className="text-center"
+                            className="text-center bg-transparent border-b border-gray-300 dark:border-gray-700 text-onyx-900 dark:text-white"
                         />
-                        <input
-                            type="password"
-                            placeholder="PASSWORD"
-                            value={pass}
-                            onChange={e => setPass(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                            className="text-center"
+                        type="password"
+                        placeholder="PASSWORD"
+                        value={pass}
+                        onChange={e => setPass(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                        className="text-center bg-transparent border-b border-gray-300 dark:border-gray-700 text-onyx-900 dark:text-white"
                         />
                     </div>
 
@@ -261,16 +235,16 @@ export default function Admin() {
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <p className="font-script text-gold-400 text-xl">Welcome back</p>
-                    <h1 className="font-display text-3xl text-white tracking-wide">Admin Dashboard</h1>
+                    <p className="font-script text-gold-600 dark:text-gold-400 text-xl">Welcome back</p>
+                    <h1 className="font-display text-3xl text-onyx-900 dark:text-white tracking-wide">Admin Dashboard</h1>
                 </div>
-                <button onClick={handleLogout} className="text-gray-400 hover:text-white flex items-center gap-2 text-sm">
+                <button onClick={handleLogout} className="text-gray-500 hover:text-onyx-900 dark:text-gray-400 dark:hover:text-white flex items-center gap-2 text-sm">
                     <LogOut size={18} /> Logout
                 </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-4 mb-8 border-b border-white/10 pb-4">
+            <div className="flex gap-4 mb-8 border-b border-onyx-900/10 dark:border-white/10 pb-4">
                 {[
                     { id: 'upload', label: 'Add Product', icon: Upload },
                     { id: 'verify', label: 'Verify Order', icon: CheckCircle },
@@ -280,8 +254,8 @@ export default function Admin() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${activeTab === tab.id
-                                ? 'text-gold-400 border-b-2 border-gold-400 -mb-[18px]'
-                                : 'text-gray-500 hover:text-white'
+                            ? 'text-gold-600 dark:text-gold-400 border-b-2 border-gold-600 dark:border-gold-400 -mb-[18px]'
+                            : 'text-gray-600 dark:text-gray-500 hover:text-onyx-900 dark:hover:text-white'
                             }`}
                     >
                         <tab.icon size={16} /> {tab.label}
@@ -291,8 +265,8 @@ export default function Admin() {
 
             {/* Upload Product - Now with URL */}
             {activeTab === 'upload' && (
-                <div className="elegant-frame animate-fade-up">
-                    <h2 className="font-display text-xl text-white mb-8 tracking-wide">
+                <div className="elegant-frame animate-fade-up bg-white dark:bg-onyx-900 border border-onyx-900/10 dark:border-white/10">
+                    <h2 className="font-display text-xl text-onyx-900 dark:text-white mb-8 tracking-wide">
                         ADD NEW PRODUCT
                     </h2>
 
@@ -317,11 +291,11 @@ export default function Admin() {
                                     placeholder="https://i.ibb.co/xxxxx/image.jpg"
                                     value={imageUrl}
                                     onChange={e => setImageUrl(e.target.value)}
-                                    className="pl-8"
+                                    className="pl-8 bg-transparent border-b border-gray-300 dark:border-gray-700 text-onyx-900 dark:text-white"
                                 />
                             </div>
                             <p className="text-gray-600 text-xs mt-2">
-                                Upload image to <a href="https://imgbb.com" target="_blank" rel="noopener noreferrer" className="text-gold-400 hover:underline">imgbb.com</a> and paste the direct link
+                                Upload image to <a href="https://imgbb.com" target="_blank" rel="noopener noreferrer" className="text-gold-600 dark:text-gold-400 hover:underline">imgbb.com</a> and paste the direct link
                             </p>
                         </div>
 
@@ -347,8 +321,8 @@ export default function Admin() {
 
             {/* Verify Order */}
             {activeTab === 'verify' && (
-                <div className="elegant-frame animate-fade-up">
-                    <h2 className="font-display text-xl text-white mb-8 tracking-wide">
+                <div className="elegant-frame animate-fade-up bg-white dark:bg-onyx-900 border border-onyx-900/10 dark:border-white/10">
+                    <h2 className="font-display text-xl text-onyx-900 dark:text-white mb-8 tracking-wide">
                         VERIFY CUSTOMER ORDER
                     </h2>
 
@@ -363,9 +337,9 @@ export default function Admin() {
                         {verifyStatus === 'valid' && (
                             <div>
                                 <CheckCircle size={64} className="mx-auto text-green-500 mb-4" />
-                                <p className="font-display text-2xl text-green-400 mb-4">✓ VERIFIED</p>
+                                <p className="font-display text-2xl text-green-500 dark:text-green-400 mb-4">✓ VERIFIED</p>
                                 {verifiedOrder && (
-                                    <div className="border border-white/10 p-6 text-left max-w-sm mx-auto">
+                                    <div className="border border-onyx-900/10 dark:border-white/10 p-6 text-left max-w-sm mx-auto text-onyx-900 dark:text-white">
                                         <p><strong>Type:</strong> {verifiedOrder.type}</p>
                                         <p><strong>Customer:</strong> {verifiedOrder.customer?.name}</p>
                                         <p><strong>Amount:</strong> ₦{(verifiedOrder.total || verifiedOrder.totalAmount)?.toLocaleString()}</p>
@@ -393,7 +367,7 @@ export default function Admin() {
             {activeTab === 'messages' && (
                 <div className="animate-fade-up">
                     <div className="flex justify-between items-center mb-8">
-                        <h2 className="font-display text-xl text-white tracking-wide">
+                        <h2 className="font-display text-xl text-onyx-900 dark:text-white tracking-wide">
                             CUSTOMER MESSAGES
                         </h2>
                         <button onClick={fetchMessages} className="text-gold-400 text-sm">Refresh</button>
@@ -413,11 +387,11 @@ export default function Admin() {
                             {messages.map((msg) => (
                                 <div
                                     key={msg.id}
-                                    className={`border p-6 ${msg.read ? 'border-white/5' : 'border-gold-400/30 bg-gold-400/5'}`}
+                                    className={`border p-6 rounded ${msg.read ? 'border-onyx-900/5 dark:border-white/5 bg-white dark:bg-onyx-900' : 'border-gold-400/30 bg-gold-400/5 dark:bg-gold-400/5'}`}
                                 >
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <p className="font-display text-lg text-white">{msg.name}</p>
+                                            <p className="font-display text-lg text-onyx-900 dark:text-white">{msg.name}</p>
                                             <p className="text-gray-500 text-sm">{msg.email} • {msg.phone || 'No phone'}</p>
                                         </div>
                                         <div className="flex gap-2">
@@ -430,17 +404,19 @@ export default function Admin() {
                                                 <Trash2 size={18} />
                                             </button>
                                         </div>
+                                        </div>
                                     </div>
-                                    <p className="text-gray-300">{msg.message}</p>
-                                    <p className="text-gray-600 text-xs mt-4">
+                                    <p className="text-gray-700 dark:text-gray-300">{msg.message}</p>
+                                    <p className="text-gray-500 text-xs mt-4">
                                         {new Date(msg.createdAt).toLocaleString()}
                                     </p>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                    ))}
                 </div>
             )}
         </div>
+    )
+}
+        </div >
     );
 }

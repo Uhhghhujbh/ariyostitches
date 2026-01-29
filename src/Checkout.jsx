@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useCart } from './CartContext';
 import { FlutterWaveButton, closePaymentModal } from 'flutterwave-react-v3';
-import { db } from './firebase-config';
-import { addDoc, collection } from 'firebase/firestore';
+// db import removed
+import { ApiService } from './services/api';
 import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, ShoppingBag, AlertCircle, Lock, ArrowLeft } from 'lucide-react';
 
@@ -45,23 +45,21 @@ export default function Checkout() {
     const handleSuccess = async (response) => {
         setProcessing(true);
         try {
-            const orderRef = await addDoc(collection(db, "orders"), {
+            // Create order via API (backend verifies payment)
+            const orderResponse = await ApiService.createOrder({
                 customer: { name, email, phone },
                 items: cart,
                 total,
                 paymentRef: response.transaction_id,
-                flwRef: response.flw_ref,
-                date: new Date().toISOString(),
-                status: 'Paid',
-                scanned: false
+                flwRef: response.flw_ref
             });
 
             closePaymentModal();
             clearCart();
-            navigate(`/success/${orderRef.id}`);
+            navigate(`/success/${orderResponse.data.id}`);
         } catch (error) {
             console.error("Order error:", error);
-            alert("Order saved but error occurred. Please contact support.");
+            alert("Order processing failed. Please contact support if payment was debited.");
         }
         setProcessing(false);
     };
@@ -92,11 +90,11 @@ export default function Checkout() {
     }
 
     return (
-        <div className="min-h-screen bg-onyx-950 pt-24 pb-20">
+        <div className="min-h-screen bg-ivory dark:bg-onyx-950 pt-24 pb-20 transition-colors duration-300">
             {/* Header */}
             <header className="text-center py-12 px-6">
-                <p className="font-script text-gold-400 text-2xl mb-4">Checkout</p>
-                <h1 className="font-display text-4xl md:text-5xl font-light text-white mb-4 tracking-wide">
+                <p className="font-script text-gold-600 dark:text-gold-400 text-2xl mb-4">Checkout</p>
+                <h1 className="font-display text-4xl md:text-5xl font-light text-onyx-900 dark:text-white mb-4 tracking-wide">
                     YOUR BAG
                 </h1>
                 <div className="divider-gold" />
@@ -106,7 +104,7 @@ export default function Checkout() {
                 <div className="grid lg:grid-cols-2 gap-16">
                     {/* Cart Items */}
                     <div>
-                        <h2 className="font-display text-xl text-white mb-8 tracking-wide">
+                        <h2 className="font-display text-xl text-onyx-900 dark:text-white mb-8 tracking-wide">
                             ORDER SUMMARY
                         </h2>
 
@@ -137,10 +135,10 @@ export default function Checkout() {
                         </div>
 
                         {/* Total */}
-                        <div className="mt-8 pt-8 border-t border-white/10">
+                        <div className="mt-8 pt-8 border-t border-onyx-900/10 dark:border-white/10">
                             <div className="flex justify-between items-center">
-                                <span className="font-display text-lg text-gray-400">Total</span>
-                                <span className="font-display text-3xl text-gold-400">
+                                <span className="font-display text-lg text-gray-600 dark:text-gray-400">Total</span>
+                                <span className="font-display text-3xl text-gold-600 dark:text-gold-400">
                                     ₦{total.toLocaleString()}
                                 </span>
                             </div>
@@ -153,7 +151,7 @@ export default function Checkout() {
 
                     {/* Checkout Form */}
                     <div>
-                        <h2 className="font-display text-xl text-white mb-8 tracking-wide">
+                        <h2 className="font-display text-xl text-onyx-900 dark:text-white mb-8 tracking-wide">
                             CUSTOMER DETAILS
                         </h2>
 
@@ -163,7 +161,7 @@ export default function Checkout() {
                                     placeholder="FULL NAME"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className={errors.name ? 'border-b-red-500' : ''}
+                                    className={`bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none ${errors.name ? 'border-b-red-500' : ''}`}
                                 />
                                 {errors.name && (
                                     <p className="text-red-400 text-xs mt-2">{errors.name}</p>
@@ -171,11 +169,10 @@ export default function Checkout() {
                             </div>
                             <div>
                                 <input
-                                    placeholder="EMAIL ADDRESS"
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className={errors.email ? 'border-b-red-500' : ''}
+                                    className={`bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none ${errors.email ? 'border-b-red-500' : ''}`}
                                 />
                                 {errors.email && (
                                     <p className="text-red-400 text-xs mt-2">{errors.email}</p>
@@ -183,10 +180,9 @@ export default function Checkout() {
                             </div>
                             <div>
                                 <input
-                                    placeholder="PHONE NUMBER"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
-                                    className={errors.phone ? 'border-b-red-500' : ''}
+                                    className={`bg-transparent text-onyx-900 dark:text-white border-b border-gray-300 dark:border-gray-700 w-full py-2 outline-none ${errors.phone ? 'border-b-red-500' : ''}`}
                                 />
                                 {errors.phone && (
                                     <p className="text-red-400 text-xs mt-2">{errors.phone}</p>
@@ -195,9 +191,9 @@ export default function Checkout() {
                         </div>
 
                         {/* Security Note */}
-                        <div className="flex items-start gap-4 mb-8 p-6 border border-white/5">
-                            <Lock size={18} className="text-gold-400 mt-1" />
-                            <p className="text-gray-500 text-sm leading-relaxed">
+                        <div className="flex items-start gap-4 mb-8 p-6 border border-onyx-900/5 dark:border-white/5 bg-onyx-900/5 dark:bg-white/5">
+                            <Lock size={18} className="text-gold-600 dark:text-gold-400 mt-1" />
+                            <p className="text-gray-600 dark:text-gray-500 text-sm leading-relaxed">
                                 Your payment is secured by Flutterwave. We never store your card details.
                             </p>
                         </div>
@@ -207,8 +203,8 @@ export default function Checkout() {
                             disabled={!isFormValid || processing}
                             onClick={() => validateForm()}
                             className={`w-full font-display text-sm tracking-[0.2em] uppercase py-5 transition-all ${isFormValid
-                                    ? 'bg-gold-400 text-black hover:bg-gold-500'
-                                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                                ? 'bg-gold-600 dark:bg-gold-400 text-white dark:text-black hover:bg-gold-700 dark:hover:bg-gold-500'
+                                : 'bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
                                 }`}
                         />
                     </div>

@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { db } from './firebase-config';
-import { collection, getDocs } from 'firebase/firestore';
+import { ApiService } from './services/api';
 import { useCart } from './CartContext';
 import { Plus, Check, Search, ShoppingBag } from 'lucide-react';
 
@@ -15,12 +13,8 @@ export default function Shop() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, "products"));
-                const items = [];
-                querySnapshot.forEach((doc) => {
-                    items.push({ id: doc.id, ...doc.data() });
-                });
-                setProducts(items);
+                const response = await ApiService.getProducts();
+                setProducts(response.data);
             } catch (error) {
                 console.error("Error fetching products:", error);
             } finally {
@@ -54,15 +48,15 @@ export default function Shop() {
     }
 
     return (
-        <div className="min-h-screen bg-onyx-950 pt-24">
+        <div className="min-h-screen bg-ivory dark:bg-onyx-950 pt-24 transition-colors duration-300">
             {/* Header */}
             <header className="text-center py-16 px-6">
-                <p className="font-script text-gold-400 text-2xl mb-4">Our Collection</p>
-                <h1 className="font-display text-4xl md:text-6xl font-light text-white mb-6 tracking-wide">
+                <p className="font-script text-gold-600 dark:text-gold-400 text-2xl mb-4">Our Collection</p>
+                <h1 className="font-display text-4xl md:text-6xl font-light text-onyx-900 dark:text-white mb-6 tracking-wide">
                     THE ATELIER
                 </h1>
                 <div className="divider-gold mb-8" />
-                <p className="font-display text-lg text-gray-400 font-light italic max-w-2xl mx-auto">
+                <p className="font-display text-lg text-gray-600 dark:text-gray-400 font-light italic max-w-2xl mx-auto">
                     Discover our curated selection of premium garments, each piece crafted with meticulous attention to detail
                 </p>
 
@@ -82,8 +76,8 @@ export default function Shop() {
             {/* Products Grid - Magazine Layout */}
             {filteredProducts.length === 0 ? (
                 <div className="text-center py-32 px-6">
-                    <ShoppingBag size={48} className="mx-auto mb-6 text-gray-700" />
-                    <p className="font-display text-2xl text-white mb-4">
+                    <ShoppingBag size={48} className="mx-auto mb-6 text-gray-400 dark:text-gray-600" />
+                    <p className="font-display text-2xl text-onyx-900 dark:text-white mb-4">
                         {searchTerm ? 'No items found' : 'Collection Coming Soon'}
                     </p>
                     <p className="text-gray-500">
@@ -96,11 +90,11 @@ export default function Shop() {
             ) : (
                 <div className="px-6 pb-32">
                     {/* Masonry-style Grid */}
-                    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/5">
+                    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-onyx-900/10 dark:bg-white/5">
                         {filteredProducts.map((item, idx) => (
                             <div
                                 key={item.id}
-                                className="bg-onyx-950 group relative"
+                                className="bg-white dark:bg-onyx-950 group relative"
                                 onMouseEnter={() => setHoveredId(item.id)}
                                 onMouseLeave={() => setHoveredId(null)}
                             >
@@ -134,15 +128,15 @@ export default function Shop() {
                                 </div>
 
                                 {/* Product Info - Below Image */}
-                                <div className="p-6 text-center border-b border-white/5">
-                                    <h3 className="font-display text-lg text-white mb-2 tracking-wide">
+                                <div className="p-6 text-center border-b border-onyx-900/10 dark:border-white/5">
+                                    <h3 className="font-display text-lg text-onyx-900 dark:text-white mb-2 tracking-wide">
                                         {item.name}
                                     </h3>
-                                    <p className="price-tag">
+                                    <p className="price-tag text-gold-600 dark:text-gold-400">
                                         ₦{Number(item.price).toLocaleString()}
                                     </p>
                                     {item.description && (
-                                        <p className="text-gray-500 text-sm mt-3 line-clamp-2">
+                                        <p className="text-gray-600 dark:text-gray-500 text-sm mt-3 line-clamp-2">
                                             {item.description}
                                         </p>
                                     )}

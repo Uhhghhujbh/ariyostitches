@@ -13,6 +13,7 @@ import { CartProvider } from './CartContext';
 import { LayawayProvider } from './LayawayContext';
 import { SecurityProvider } from './security/SecurityProvider';
 import ErrorBoundary from './security/ErrorBoundary';
+import { ThemeProvider } from './ThemeContext';
 
 function App() {
     return (
@@ -20,21 +21,23 @@ function App() {
             <SecurityProvider>
                 <CartProvider>
                     <LayawayProvider>
-                        <BrowserRouter>
-                            <div className="min-h-screen bg-onyx-950 text-white font-sans">
-                                <Navbar />
-                                <Routes>
-                                    <Route path="/" element={<Home />} />
-                                    <Route path="/shop" element={<Shop />} />
-                                    <Route path="/cart" element={<Checkout />} />
-                                    <Route path="/success/:id" element={<Success />} />
-                                    <Route path="/me" element={<Admin />} />
-                                    <Route path="/layaway" element={<Layaway />} />
-                                    <Route path="/layaway/print/:id" element={<LayawayPrint />} />
-                                    <Route path="/contact" element={<Contact />} />
-                                </Routes>
-                            </div>
-                        </BrowserRouter>
+                        <ThemeProvider>
+                            <BrowserRouter>
+                                <div className="min-h-screen bg-ivory dark:bg-onyx-950 text-onyx-900 dark:text-white font-sans transition-colors duration-300">
+                                    <Navbar />
+                                    <Routes>
+                                        <Route path="/" element={<Home />} />
+                                        <Route path="/shop" element={<Shop />} />
+                                        <Route path="/cart" element={<Checkout />} />
+                                        <Route path="/success/:id" element={<Success />} />
+                                        <Route path="/me" element={<Admin />} />
+                                        <Route path="/layaway" element={<Layaway />} />
+                                        <Route path="/layaway/print/:id" element={<LayawayPrint />} />
+                                        <Route path="/contact" element={<Contact />} />
+                                    </Routes>
+                                </div>
+                            </BrowserRouter>
+                        </ThemeProvider>
                     </LayawayProvider>
                 </CartProvider>
             </SecurityProvider>

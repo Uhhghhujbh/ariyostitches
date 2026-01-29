@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Menu, X } from 'lucide-react';
+import { ShoppingBag, Menu, X, Sun, Moon } from 'lucide-react';
+import { useTheme } from './ThemeContext';
 import { useCart } from './CartContext';
 import { auth } from './firebase-config';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function Navbar() {
+    const { isDark, toggleTheme } = useTheme();
     const { cart } = useCart();
     const [isOpen, setIsOpen] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -36,7 +38,7 @@ export default function Navbar() {
 
     return (
         <>
-            <nav className="fixed top-0 w-full z-50 bg-onyx-950/90 backdrop-blur-sm border-b border-white/5">
+            <nav className="fixed top-0 w-full z-50 bg-ivory/90 dark:bg-onyx-950/90 backdrop-blur-sm border-b border-onyx-900/10 dark:border-white/5 transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
                     {/* Logo */}
                     <Link to="/" className="flex items-center gap-3">
@@ -46,8 +48,8 @@ export default function Navbar() {
                             className="w-10 h-10 rounded-full border border-gold-400/50"
                         />
                         <span className="font-display text-xl tracking-widest hidden sm:block">
-                            <span className="text-gold-400">ARIYO</span>
-                            <span className="text-white ml-1">FASHION</span>
+                            <span className="text-gold-600 dark:text-gold-400">ARIYO</span>
+                            <span className="text-onyx-900 dark:text-white ml-1">FASHION</span>
                         </span>
                     </Link>
 
@@ -58,8 +60,8 @@ export default function Navbar() {
                                 key={link.to}
                                 to={link.to}
                                 className={`text-sm tracking-[0.2em] uppercase transition-colors duration-300 ${isActive(link.to)
-                                        ? 'text-gold-400'
-                                        : 'text-gray-400 hover:text-white'
+                                    ? 'text-gold-600 dark:text-gold-400'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-onyx-900 dark:hover:text-white'
                                     }`}
                             >
                                 {link.label}
@@ -67,11 +69,18 @@ export default function Navbar() {
                         ))}
                     </div>
 
-                    {/* Right Icons */}
                     <div className="flex gap-6 items-center">
+                        {/* Theme Toggle */}
+                        <button
+                            onClick={toggleTheme}
+                            className="text-gray-600 dark:text-gray-400 hover:text-gold-600 dark:hover:text-gold-400 transition-colors"
+                        >
+                            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
+
                         <Link
                             to="/cart"
-                            className={`relative transition-colors ${isActive('/cart') ? 'text-gold-400' : 'text-gray-400 hover:text-white'
+                            className={`relative transition-colors ${isActive('/cart') ? 'text-gold-600 dark:text-gold-400' : 'text-gray-600 dark:text-gray-400 hover:text-onyx-900 dark:hover:text-white'
                                 }`}
                         >
                             <ShoppingBag size={20} />
@@ -85,7 +94,7 @@ export default function Navbar() {
                         {/* Mobile Menu Toggle */}
                         <button
                             onClick={() => setIsOpen(!isOpen)}
-                            className="md:hidden text-gray-400 hover:text-white transition-colors"
+                            className="md:hidden text-gray-600 dark:text-gray-400 hover:text-onyx-900 dark:hover:text-white transition-colors"
                         >
                             {isOpen ? <X size={24} /> : <Menu size={24} />}
                         </button>
@@ -95,7 +104,7 @@ export default function Navbar() {
 
             {/* Mobile Menu - Full Screen Overlay */}
             {isOpen && (
-                <div className="fixed inset-0 z-40 bg-onyx-950 flex flex-col items-center justify-center animate-fade-in">
+                <div className="fixed inset-0 z-40 bg-ivory dark:bg-onyx-950 flex flex-col items-center justify-center animate-fade-in text-onyx-900 dark:text-white">
                     <button
                         onClick={() => setIsOpen(false)}
                         className="absolute top-6 right-6 text-gray-400 hover:text-white"
@@ -110,8 +119,8 @@ export default function Navbar() {
                                     to={link.to}
                                     onClick={() => setIsOpen(false)}
                                     className={`font-display text-3xl tracking-widest transition-colors ${isActive(link.to)
-                                            ? 'text-gold-400'
-                                            : 'text-white hover:text-gold-400'
+                                        ? 'text-gold-600 dark:text-gold-400'
+                                        : 'text-onyx-900 dark:text-white hover:text-gold-600 dark:hover:text-gold-400'
                                         }`}
                                 >
                                     {link.label.toUpperCase()}
