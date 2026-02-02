@@ -1,10 +1,9 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Deny all read/write access from client SDKs
-    // All operations must go through the backend API using Admin SDK
+    // DENY ALL PUBLIC ACCESS
+    // All access must go through the backend (Vercel Functions) using the Service Role SDK.
     match /{document=**} {
       allow read, write: if false;
     }

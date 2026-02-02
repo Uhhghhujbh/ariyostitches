@@ -1,10 +1,51 @@
-
 import { auth } from './firebase-admin.js';
+
+// In-memory rate limit store (Note: Resets on cold start, but effective for DDOS bursts on warm instances)
+const rateLimitMap = new Map();
+
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS = 60; // 60 requests per minute per IP
+
+const cleanRateLimitMap = () => {
+    const now = Date.now();
+    for (const [key, value] of rateLimitMap.entries()) {
+        if (now > value.resetTime) {
+            rateLimitMap.delete(key);
+        }
+    }
+};
+
+// Periodic cleanup (every 5 mins)
+setInterval(cleanRateLimitMap, 5 * 60 * 1000);
+
+export const rateLimiter = (req) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+
+    if (!rateLimitMap.has(ip)) {
+        rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+        return true;
+    }
+
+    const limitData = rateLimitMap.get(ip);
+    if (now > limitData.resetTime) {
+        limitData.count = 1;
+        limitData.resetTime = now + RATE_LIMIT_WINDOW;
+        return true;
+    }
+
+    if (limitData.count >= MAX_REQUESTS) {
+        return false;
+    }
+
+    limitData.count++;
+    return true;
+};
 
 // Helper to set CORS headers
 export const setCorsHeaders = (res) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Update for production
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Consider locking this down to your Vercel domain in production
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader(
         'Access-Control-Allow-Headers',
@@ -22,7 +63,13 @@ export const withMiddleware = (handler) => async (req, res) => {
     }
 
     try {
-        // 2. Token Verification (Optimistic)
+        // 2. Rate Limiting
+        if (!rateLimiter(req)) {
+            console.warn(`Rate limit exceeded for IP: ${req.headers['x-forwarded-for']}`);
+            return res.status(429).json({ error: 'Too many requests, please try again later.' });
+        }
+
+        // 3. Token Verification (Optimistic)
         const authHeader = req.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];
@@ -41,15 +88,17 @@ export const withMiddleware = (handler) => async (req, res) => {
             }
         }
 
-        // 3. Rate Limiting (Placeholder)
-        // Ideally use Vercel KV or Edge Middleware here
+        // 4. Security Headers (Helmet-lite)
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('X-XSS-Protection', '1; mode=block');
 
-        // 4. Execute Handler
+        // 5. Execute Handler
         return await handler(req, res);
 
     } catch (error) {
         console.error('API Error:', error);
-        return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+        return res.status(500).json({ error: 'Internal Server Error', details: error.message }); // Hide details in prod
     }
 };
 

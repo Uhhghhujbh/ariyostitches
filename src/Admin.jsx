@@ -284,19 +284,44 @@ export default function Admin() {
                             <textarea placeholder="Describe the product..." value={prodDesc} onChange={e => setProdDesc(e.target.value)} rows={3} className="resize-none" />
                         </div>
                         <div>
-                            <p className="text-gray-500 text-sm uppercase tracking-wider mb-2">Image URL * (imgbb, etc.)</p>
+                            <p className="text-gray-500 text-sm uppercase tracking-wider mb-2">Product Image *</p>
                             <div className="relative">
-                                <LinkIcon className="absolute left-0 top-4 text-gray-600" size={18} />
                                 <input
-                                    placeholder="https://i.ibb.co/xxxxx/image.jpg"
-                                    value={imageUrl}
-                                    onChange={e => setImageUrl(e.target.value)}
-                                    className="pl-8 bg-transparent border-b border-gray-300 dark:border-gray-700 text-onyx-900 dark:text-white"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                        const file = e.target.files[0];
+                                        if (!file) return;
+
+                                        // Validate size (e.g. 5MB)
+                                        if (file.size > 5 * 1024 * 1024) {
+                                            alert("File too large (Max 5MB)");
+                                            return;
+                                        }
+
+                                        setUploading(true);
+                                        const formData = new FormData();
+                                        formData.append('file', file);
+
+                                        try {
+                                            const res = await ApiService.uploadFile(formData);
+                                            setImageUrl(res.data.url);
+                                        } catch (error) {
+                                            console.error("Upload failed", error);
+                                            alert("Image upload failed");
+                                        } finally {
+                                            setUploading(false);
+                                        }
+                                    }}
+                                    className="block w-full text-sm text-gray-500
+                                    file:mr-4 file:py-2 file:px-4
+                                    file:rounded-full file:border-0
+                                    file:text-sm file:font-semibold
+                                    file:bg-gold-50 file:text-gold-700
+                                    hover:file:bg-gold-100"
                                 />
+                                {imageUrl && <p className="text-xs text-green-500 mt-2">✓ Image uploaded successfully</p>}
                             </div>
-                            <p className="text-gray-600 text-xs mt-2">
-                                Upload image to <a href="https://imgbb.com" target="_blank" rel="noopener noreferrer" className="text-gold-600 dark:text-gold-400 hover:underline">imgbb.com</a> and paste the direct link
-                            </p>
                         </div>
 
                         {/* Image Preview */}

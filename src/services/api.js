@@ -47,7 +47,12 @@ export const ApiService = {
     getLayaways: (phone, email) => api.get(`/layaways?phone=${phone || ''}&email=${email || ''}`),
     getLayawayById: (id) => api.get(`/layaways?id=${id}`),
     createLayaway: (data) => api.post('/layaways', data),
-    recordPayment: (id, paymentData) => api.put(`/layaways?id=${id}`, paymentData)
+    recordPayment: (id, paymentData) => api.put(`/layaways?id=${id}`, paymentData),
+
+    // Uploads
+    uploadFile: (formData) => api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
 };
 
 export default api;
