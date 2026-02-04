@@ -1,5 +1,4 @@
-
-import { db } from './lib/firebase-admin.js';
+import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware, requireAdmin } from './lib/middleware.js';
 import { validateProduct, sanitizeString } from './lib/validators.js';
 
@@ -7,7 +6,7 @@ const handler = async (req, res) => {
     // GET /api/products
     if (req.method === 'GET') {
         try {
-            const snapshot = await db.collection('products').orderBy('created_at', 'desc').get();
+            const snapshot = await getDb().collection('products').orderBy('created_at', 'desc').get();
             const products = [];
             snapshot.forEach(doc => {
                 products.push({ id: doc.id, ...doc.data() });
@@ -37,7 +36,7 @@ const handler = async (req, res) => {
                 created_at: new Date().toISOString()
             };
 
-            const docRef = await db.collection('products').add(newProduct);
+            const docRef = await getDb().collection('products').add(newProduct);
             return res.status(201).json({ id: docRef.id, ...newProduct });
         } catch (error) {
             return res.status(500).json({ error: 'Failed to add product' });

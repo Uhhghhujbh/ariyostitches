@@ -1,4 +1,5 @@
-import { auth } from './firebase-admin.js';
+import { getAuth } from './firebase-admin.js';
+import admin from 'firebase-admin';
 
 // In-memory rate limit store (Note: Resets on cold start, but effective for DDOS bursts on warm instances)
 const rateLimitMap = new Map();
@@ -63,6 +64,14 @@ export const withMiddleware = (handler) => async (req, res) => {
     }
 
     try {
+        // 1.5. CHECK FIREBASE INITIALIZATION
+        if (!admin.apps.length) {
+            return res.status(500).json({
+                error: 'Firebase Admin not initialized',
+                details: 'Missing credentials in Vercel environment variables (PROJECT_ID, CLIENT_EMAIL, PRIVATE_KEY)'
+            });
+        }
+
         // 2. Rate Limiting
         if (!rateLimiter(req)) {
             console.warn(`Rate limit exceeded for IP: ${req.headers['x-forwarded-for']}`);
@@ -74,6 +83,7 @@ export const withMiddleware = (handler) => async (req, res) => {
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];
             try {
+                const auth = getAuth();
                 const decodedToken = await auth.verifyIdToken(token);
                 req.user = decodedToken;
 

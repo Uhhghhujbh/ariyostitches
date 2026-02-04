@@ -1,6 +1,5 @@
-
 import axios from 'axios';
-import { db } from './lib/firebase-admin.js';
+import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware, requireAdmin } from './lib/middleware.js';
 import { validateOrder, sanitizeString } from './lib/validators.js';
 
@@ -49,7 +48,7 @@ const handler = async (req, res) => {
                 scanned: false
             };
 
-            const docRef = await db.collection('orders').add(newOrder);
+            const docRef = await getDb().collection('orders').add(newOrder);
             return res.status(201).json({ id: docRef.id, ...newOrder });
 
         } catch (error) {
@@ -63,12 +62,12 @@ const handler = async (req, res) => {
         const { id } = req.query;
         if (id) {
             try {
-                const docRef = db.collection('orders').doc(id);
+                const docRef = getDb().collection('orders').doc(id);
                 const doc = await docRef.get();
 
                 if (!doc.exists) {
                     // Check layaways if not found in orders
-                    const layawayRef = db.collection('layaways').doc(id);
+                    const layawayRef = getDb().collection('layaways').doc(id);
                     const layawayDoc = await layawayRef.get();
                     if (layawayDoc.exists) {
                         return res.status(200).json({ type: 'layaway', id: layawayDoc.id, ...layawayDoc.data() });
@@ -87,8 +86,6 @@ const handler = async (req, res) => {
     // AUTH REQUIRED FOR ADMIN ACTIONS
     if (!requireAdmin(req, res)) return;
 
-
-
     // PUT /api/admin/orders/:id (Update Status/Scanned)
     if (req.method === 'PUT') {
         const { id } = req.query;
@@ -98,7 +95,7 @@ const handler = async (req, res) => {
 
         try {
             // Check order first
-            const orderRef = db.collection('orders').doc(id);
+            const orderRef = getDb().collection('orders').doc(id);
             const orderDoc = await orderRef.get();
 
             if (orderDoc.exists) {
@@ -107,7 +104,7 @@ const handler = async (req, res) => {
             }
 
             // Check layaway
-            const layawayRef = db.collection('layaways').doc(id);
+            const layawayRef = getDb().collection('layaways').doc(id);
             const layawayDoc = await layawayRef.get();
             if (layawayDoc.exists) {
                 await layawayRef.update({ ...(scanned !== undefined && { scanned }) });

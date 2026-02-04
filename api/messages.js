@@ -1,5 +1,5 @@
 
-import { db } from './lib/firebase-admin.js';
+import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware, requireAdmin } from './lib/middleware.js';
 import { validateEmail, sanitizeString } from './lib/validators.js';
 
@@ -25,7 +25,7 @@ const handler = async (req, res) => {
                 read: false
             };
 
-            const docRef = await db.collection('messages').add(newMessage);
+            const docRef = await getDb().collection('messages').add(newMessage);
             return res.status(201).json({ id: docRef.id, message: 'Message sent successfully' });
         } catch (error) {
             console.error('Message Submission Error:', error);
@@ -43,7 +43,7 @@ const handler = async (req, res) => {
     // GET /api/messages (List all)
     if (req.method === 'GET') {
         try {
-            const snapshot = await db.collection('messages').orderBy('createdAt', 'desc').get();
+            const snapshot = await getDb().collection('messages').orderBy('createdAt', 'desc').get();
             const messages = [];
             snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
             return res.status(200).json(messages);
@@ -58,7 +58,7 @@ const handler = async (req, res) => {
         if (!id) return res.status(400).json({ error: 'Missing ID' });
 
         try {
-            await db.collection('messages').doc(id).update({ read: true });
+            await getDb().collection('messages').doc(id).update({ read: true });
             return res.status(200).json({ success: true });
         } catch (error) {
             return res.status(500).json({ error: 'Failed to update message' });
@@ -71,7 +71,7 @@ const handler = async (req, res) => {
         if (!id) return res.status(400).json({ error: 'Missing ID' });
 
         try {
-            await db.collection('messages').doc(id).delete();
+            await getDb().collection('messages').doc(id).delete();
             return res.status(200).json({ success: true });
         } catch (error) {
             return res.status(500).json({ error: 'Failed to delete message' });

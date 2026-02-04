@@ -1,5 +1,4 @@
-
-import { db } from './lib/firebase-admin.js';
+import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware } from './lib/middleware.js';
 import { sanitizeString } from './lib/validators.js';
 
@@ -10,7 +9,7 @@ const handler = async (req, res) => {
 
         if (id) {
             try {
-                const docRef = db.collection('layaways').doc(id);
+                const docRef = getDb().collection('layaways').doc(id);
                 const doc = await docRef.get();
                 if (!doc.exists) return res.status(404).json({ error: 'Layaway not found' });
                 return res.status(200).json({ id: doc.id, ...doc.data() });
@@ -24,7 +23,7 @@ const handler = async (req, res) => {
         }
 
         try {
-            let query = db.collection('layaways');
+            let query = getDb().collection('layaways');
             if (phone) query = query.where('customer.phone', '==', phone);
             else query = query.where('customer.email', '==', email);
 
@@ -70,7 +69,7 @@ const handler = async (req, res) => {
                 updatedAt: new Date().toISOString()
             };
 
-            const docRef = await db.collection('layaways').add(newLayaway);
+            const docRef = await getDb().collection('layaways').add(newLayaway);
             return res.status(201).json({ id: docRef.id, ...newLayaway });
         } catch (error) {
             return res.status(500).json({ error: 'Failed to create layaway' });
@@ -88,7 +87,7 @@ const handler = async (req, res) => {
         }
 
         try {
-            const layawayRef = db.collection('layaways').doc(id);
+            const layawayRef = getDb().collection('layaways').doc(id);
             const layawayDoc = await layawayRef.get();
 
             if (!layawayDoc.exists) {
@@ -96,12 +95,6 @@ const handler = async (req, res) => {
             }
 
             const layaway = layawayDoc.data();
-
-            // Verify payment if not already verified (backend check)
-            // Ideally verify against Flutterwave here too, similar to orders
-            // For now assuming passed paymentRef is valid or verifying it:
-            // Implementation of verification:
-            // ... verify logic ...
 
             const newPaidAmount = layaway.paidAmount + Number(amount);
             const newRemainingAmount = layaway.totalAmount - newPaidAmount;
