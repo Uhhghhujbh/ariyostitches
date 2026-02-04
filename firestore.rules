@@ -2,30 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 1. MESSAGES: Force usage of /api/messages for creation
-    // Only admins can read/update/delete
-    match /messages/{doc} {
-      allow create: if false; 
-      allow read, update, delete: if request.auth != null;
-    }
-
-    // 2. PRODUCTS: Public can read, only Admins can write
-    match /products/{doc} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // 3. ORDERS & LAYAWAYS: Restrict to authenticated users for admin tasks
-    match /orders/{doc} {
-       allow create: if false; // Force usage of /api/orders
-       allow read, update: if request.auth != null;
-    }
-
-    match /layaways/{doc} {
-       allow create, read, update: if true; // Keeping public for payment recording if needed, but consider moving to API
-    }
-
-    // DEFAULT: DENY EVERYTHING ELSE
+    // 🔒 STRICT SECURITY: DENY ALL PUBLIC ACCESS
+    // All data operations (Messages, Orders, Products, Layaways) 
+    // are strictly handled by Vercel Serverless Functions 
+    // using the Firebase Admin SDK (Service Account).
+    
     match /{document=**} {
       allow read, write: if false;
     }

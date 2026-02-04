@@ -28,7 +28,12 @@ const handler = async (req, res) => {
             const docRef = await db.collection('messages').add(newMessage);
             return res.status(201).json({ id: docRef.id, message: 'Message sent successfully' });
         } catch (error) {
-            return res.status(500).json({ error: 'Failed to send message' });
+            console.error('Message Submission Error:', error);
+            return res.status(500).json({
+                error: 'Failed to send message',
+                details: error.message,
+                code: error.code
+            });
         }
     }
 

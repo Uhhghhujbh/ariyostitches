@@ -46,7 +46,8 @@ export default function Contact() {
                 setForm({ name: '', email: '', phone: '', message: '' });
             }, 'api');
         } catch (error) {
-            alert(error.message || 'Failed to send message. Please try again.');
+            const detail = error.response?.data?.details || error.message;
+            alert(`Failed to send message: ${detail}`);
         } finally {
             setSending(false);
         }
