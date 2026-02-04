@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { initHelmet, detectFraming } from './helmet';
 import { initZTN, getSessionInfo, validateSession } from './ztn';
-import { validateInput, validateObject } from './waf';
-import { checkRateLimit } from './rateLimiter';
 import { recordLoginAttempt, isAccountLocked, getLoginStatus } from './bruteForce';
 import { sanitizeString, sanitizeEmail, sanitizePhone, sanitizeNumber } from './sanitizer';
 
@@ -61,12 +59,6 @@ export const SecurityProvider = ({ children }) => {
             throw new Error(`Account temporarily locked. Try again in ${status.unlockInSeconds} seconds.`);
         }
 
-        // Check rate limit
-        const rateResult = checkRateLimit('auth');
-        if (!rateResult.allowed) {
-            throw new Error(rateResult.reason);
-        }
-
         try {
             const result = await loginFn();
             recordLoginAttempt(identifier, true);
@@ -77,21 +69,8 @@ export const SecurityProvider = ({ children }) => {
         }
     };
 
-    // Secure input validation
-    const validateInputSecure = (input, options = {}) => {
-        const result = validateInput(input, options);
-        if (!result.valid) {
-            setThreats(prev => [...prev, ...result.threats]);
-        }
-        return result;
-    };
-
-    // Rate limited action
+    // Placeholder for rate limiting (now handled server-side)
     const rateLimitedAction = async (action, actionType = 'api') => {
-        const result = checkRateLimit(actionType);
-        if (!result.allowed) {
-            throw new Error(result.reason);
-        }
         return action();
     };
 
@@ -110,10 +89,7 @@ export const SecurityProvider = ({ children }) => {
         threats,
         validateSession,
         secureLogin,
-        validateInput: validateInputSecure,
-        validateObject,
         rateLimitedAction,
-        checkRateLimit,
         sanitize,
         getLoginStatus
     };

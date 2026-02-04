@@ -31,6 +31,7 @@ export const generateCSP = (customDirectives = {}) => {
 
 /**
  * Security headers configuration (for reference - set these server-side in Vercel)
+ * These are already set in vercel.json
  */
 export const securityHeaders = {
     'X-XSS-Protection': '1; mode=block',
@@ -39,22 +40,6 @@ export const securityHeaders = {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=(self)',
     'Content-Security-Policy': generateCSP()
-};
-
-/**
- * Apply CSP via meta tag (the only security header that works via meta)
- */
-export const applySecurityHeaders = () => {
-    // Only CSP can be set via meta tag
-    const existingCSP = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-    if (!existingCSP) {
-        const cspMeta = document.createElement('meta');
-        cspMeta.httpEquiv = 'Content-Security-Policy';
-        cspMeta.content = generateCSP();
-        document.head.appendChild(cspMeta);
-    }
-    // Note: X-Frame-Options, X-XSS-Protection, etc. MUST be set as HTTP headers
-    // They cannot be set via meta tags. Use vercel.json headers config instead.
 };
 
 /**
@@ -88,7 +73,6 @@ export const secureExternalLinks = () => {
  * Initialize all helmet protections
  */
 export const initHelmet = () => {
-    applySecurityHeaders();
     detectFraming();
 
     // Secure external links on DOM changes
@@ -108,7 +92,6 @@ export default {
     CSP_DIRECTIVES,
     generateCSP,
     securityHeaders,
-    applySecurityHeaders,
     detectFraming,
     secureExternalLinks,
     initHelmet

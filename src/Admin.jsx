@@ -113,11 +113,6 @@ export default function Admin() {
             return;
         }
 
-        const validation = security.validateInput(prodName);
-        if (!validation.valid) {
-            alert('Invalid input detected');
-            return;
-        }
 
         setUploading(true);
         try {
@@ -201,12 +196,13 @@ export default function Admin() {
                             onChange={e => setEmail(e.target.value)}
                             className="text-center bg-transparent border-b border-gray-300 dark:border-gray-700 text-onyx-900 dark:text-white"
                         />
-                        type="password"
-                        placeholder="PASSWORD"
-                        value={pass}
-                        onChange={e => setPass(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                        className="text-center bg-transparent border-b border-gray-300 dark:border-gray-700 text-onyx-900 dark:text-white"
+                        <input
+                            type="password"
+                            placeholder="PASSWORD"
+                            value={pass}
+                            onChange={e => setPass(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                            className="text-center bg-transparent border-b border-gray-300 dark:border-gray-700 text-onyx-900 dark:text-white"
                         />
                     </div>
 

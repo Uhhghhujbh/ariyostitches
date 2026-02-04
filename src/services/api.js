@@ -29,17 +29,17 @@ api.interceptors.request.use(async (config) => {
 export const ApiService = {
     // Products
     getProducts: () => api.get('/products'),
-    addProduct: (productData) => api.post('/admin/products', productData),
+    addProduct: (productData) => api.post('/products', productData),
 
     // Orders
     createOrder: (orderData) => api.post('/orders', orderData),
     getOrder: (id) => api.get(`/orders?id=${id}`),
-    verifyOrder: (id) => api.get(`/admin/orders?id=${id}`), // The endpoint now handles filtering manually or we can change this call to use getOrder but verifyOrder was admin intended. Actually api/orders handles id fetch publicly now so this verify call can just use the same logic or calling /orders?id=xxx via admin page still works because the endpoint is the same. Wait, admin verify uses the same GET logic now.
-    updateOrderStatus: (id, status, scanned) => api.put(`/admin/orders?id=${id}`, { status, scanned }),
+    verifyOrder: (id) => api.get(`/orders?id=${id}`),
+    updateOrderStatus: (id, status, scanned) => api.put(`/orders?id=${id}`, { status, scanned }),
 
     // Messages
     sendMessage: (msgData) => api.post('/messages', msgData),
-    getMessages: () => api.get('/admin/messages'), // Renamed endpoint in my mind, but api/messages.js handles GET with admin check
+    getMessages: () => api.get('/messages'),
     markMessageRead: (id) => api.put(`/messages?id=${id}`), // mapped to handler
     deleteMessage: (id) => api.delete(`/messages?id=${id}`),
 
