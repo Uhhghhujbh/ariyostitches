@@ -1,18 +1,24 @@
 import admin from 'firebase-admin';
 
 // Helper to check if credentials exist
-const hasCredentials =
-    process.env.VITE_FIREBASE_PROJECT_ID &&
-    process.env.FIREBASE_CLIENT_EMAIL &&
-    process.env.FIREBASE_PRIVATE_KEY;
+const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+const missing = [];
+if (!projectId) missing.push('VITE_FIREBASE_PROJECT_ID');
+if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
+if (!privateKey) missing.push('FIREBASE_PRIVATE_KEY');
+
+const hasCredentials = missing.length === 0;
 
 if (!admin.apps.length && hasCredentials) {
     try {
         admin.initializeApp({
             credential: admin.credential.cert({
-                projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                projectId,
+                clientEmail,
+                privateKey: privateKey.replace(/\\n/g, '\n'),
             }),
             storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET
         });
@@ -21,7 +27,7 @@ if (!admin.apps.length && hasCredentials) {
         console.error('❌ Firebase Admin Init Error:', error.message);
     }
 } else if (!hasCredentials) {
-    console.error('❌ Firebase Admin: Missing environment variables! Check Vercel settings.');
+    console.error(`❌ Firebase Admin: Missing variables: ${missing.join(', ')}`);
 }
 
 // Safely export services (will throw only when used, not on import)
