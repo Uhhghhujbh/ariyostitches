@@ -1,12 +1,11 @@
 import admin from 'firebase-admin';
 
-// Helper to check if credentials exist
-const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+const projectId = process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.VITE_FIREBASE_CLIENT_EMAIL;
+const privateKey = process.env.FIREBASE_PRIVATE_KEY || process.env.VITE_FIREBASE_PRIVATE_KEY;
 
 const missing = [];
-if (!projectId) missing.push('VITE_FIREBASE_PROJECT_ID');
+if (!projectId) missing.push('PROJECT_ID (or VITE_FIREBASE_PROJECT_ID)');
 if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
 if (!privateKey) missing.push('FIREBASE_PRIVATE_KEY');
 
