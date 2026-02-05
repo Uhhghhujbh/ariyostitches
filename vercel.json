@@ -26,6 +26,7 @@
             ]
         }
     ],
+    "cleanUrls": true,
     "rewrites": [
         {
             "source": "/api/:path*",
