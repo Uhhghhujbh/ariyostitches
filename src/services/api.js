@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { auth } from '../firebase-config'; // Keep auth for token retrieval
+import { auth } from '../firebase-config';
 
 const api = axios.create({
     baseURL: '/api',
@@ -30,6 +30,7 @@ export const ApiService = {
     // Products
     getProducts: () => api.get('/products'),
     addProduct: (productData) => api.post('/products', productData),
+    deleteProduct: (id) => api.delete(`/products?id=${id}`),
 
     // Orders
     createOrder: (orderData) => api.post('/orders', orderData),
@@ -40,7 +41,7 @@ export const ApiService = {
     // Messages
     sendMessage: (msgData) => api.post('/messages', msgData),
     getMessages: () => api.get('/messages'),
-    markMessageRead: (id) => api.put(`/messages?id=${id}`), // mapped to handler
+    markMessageRead: (id) => api.put(`/messages?id=${id}`),
     deleteMessage: (id) => api.delete(`/messages?id=${id}`),
 
     // Layaways
@@ -49,10 +50,8 @@ export const ApiService = {
     createLayaway: (data) => api.post('/layaways', data),
     recordPayment: (id, paymentData) => api.put(`/layaways?id=${id}`, paymentData),
 
-    // Uploads
-    uploadFile: (formData) => api.post('/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    // Validate Image URL (optional helper)
+    validateImageUrl: (url) => api.post('/upload', { image_url: url })
 };
 
 export default api;

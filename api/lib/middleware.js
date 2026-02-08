@@ -1,7 +1,7 @@
 import { getAuth } from './firebase-admin.js';
 import admin from 'firebase-admin';
 
-// In-memory rate limit store (Note: Resets on cold start, but effective for DDOS bursts on warm instances)
+// In-memory rate limit store
 const rateLimitMap = new Map();
 
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -46,7 +46,7 @@ export const rateLimiter = (req) => {
 // Helper to set CORS headers
 export const setCorsHeaders = (res) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Consider locking this down to your Vercel domain in production
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Lock down in production if needed
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader(
         'Access-Control-Allow-Headers',
@@ -54,8 +54,18 @@ export const setCorsHeaders = (res) => {
     );
 };
 
+// Generate request ID for debugging
+const generateRequestId = () => {
+    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Check if we're in production
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
 // Middleware wrapper
 export const withMiddleware = (handler) => async (req, res) => {
+    const requestId = generateRequestId();
+
     // 1. Handle CORS Preflight
     setCorsHeaders(res);
     if (req.method === 'OPTIONS') {
@@ -66,16 +76,18 @@ export const withMiddleware = (handler) => async (req, res) => {
     try {
         // 1.5. CHECK FIREBASE INITIALIZATION
         if (!admin.apps.length) {
+            console.error(`[${requestId}] Firebase Admin not initialized`);
             return res.status(500).json({
-                error: 'Firebase Admin not initialized',
-                details: 'Missing credentials in Vercel environment variables (PROJECT_ID, CLIENT_EMAIL, PRIVATE_KEY)'
+                error: 'Service configuration error',
+                requestId,
+                ...(isProduction ? {} : { details: 'Firebase Admin not initialized - check environment variables' })
             });
         }
 
         // 2. Rate Limiting
         if (!rateLimiter(req)) {
-            console.warn(`Rate limit exceeded for IP: ${req.headers['x-forwarded-for']}`);
-            return res.status(429).json({ error: 'Too many requests, please try again later.' });
+            console.warn(`[${requestId}] Rate limit exceeded for IP: ${req.headers['x-forwarded-for']}`);
+            return res.status(429).json({ error: 'Too many requests, please try again later.', requestId });
         }
 
         // 3. Token Verification (Optimistic)
@@ -93,29 +105,39 @@ export const withMiddleware = (handler) => async (req, res) => {
                     req.user.isAdmin = true;
                 }
             } catch (err) {
-                console.warn('Token verification failed:', err.message);
+                console.warn(`[${requestId}] Token verification failed:`, err.message);
                 // Don't error yet, let the handler decide if auth is required
             }
         }
 
-        // 4. Security Headers (Helmet-lite)
+        // 4. Security Headers
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('X-Frame-Options', 'DENY');
         res.setHeader('X-XSS-Protection', '1; mode=block');
+        res.setHeader('X-Request-ID', requestId);
 
-        // 5. Execute Handler
+        // 5. Add request ID to request object for handlers
+        req.requestId = requestId;
+
+        // 6. Execute Handler
         return await handler(req, res);
 
     } catch (error) {
-        console.error('API Error:', error);
-        return res.status(500).json({ error: 'Internal Server Error', details: error.message }); // Hide details in prod
+        console.error(`[${requestId}] API Error:`, error);
+
+        // Hide internal details in production
+        return res.status(500).json({
+            error: 'Internal Server Error',
+            requestId,
+            ...(isProduction ? {} : { details: error.message })
+        });
     }
 };
 
 // Helper for requiring admin access inside handlers
 export const requireAdmin = (req, res) => {
     if (!req.user || !req.user.isAdmin) {
-        res.status(403).json({ error: 'Forbidden: Admin access required' });
+        res.status(403).json({ error: 'Forbidden: Admin access required', requestId: req.requestId });
         return false;
     }
     return true;

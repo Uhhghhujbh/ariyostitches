@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from './firebase-config';
 import { ApiService } from './services/api';
-// db import kept for auth, but Firestore imports removed
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { useSecurity } from './security/SecurityProvider';
 import {
     Upload, LogOut, Package, AlertCircle,
-    CheckCircle, XCircle, Loader2, Link as LinkIcon, Mail, Trash2, Eye
+    CheckCircle, XCircle, Loader2, Link as LinkIcon, Mail, Trash2, Eye, ExternalLink
 } from 'lucide-react';
 
 export default function Admin() {
@@ -23,11 +22,12 @@ export default function Admin() {
     const [loginError, setLoginError] = useState('');
     const [loginLoading, setLoginLoading] = useState(false);
 
-    // Upload States - Now using URL instead of file
+    // Upload States - URL input only
     const [prodName, setProdName] = useState('');
     const [prodPrice, setProdPrice] = useState('');
     const [prodDesc, setProdDesc] = useState('');
     const [imageUrl, setImageUrl] = useState('');
+    const [imageError, setImageError] = useState('');
     const [uploading, setUploading] = useState(false);
 
     // Verify States
@@ -99,20 +99,51 @@ export default function Admin() {
         }
     }, [user, activeTab]);
 
+    // Validate image URL format (client-side quick check)
+    const validateImageUrl = (url) => {
+        if (!url) return { valid: false, error: '' };
+
+        try {
+            const parsed = new URL(url);
+            if (parsed.protocol !== 'https:') {
+                return { valid: false, error: 'URL must use HTTPS' };
+            }
+            // Check for allowed domains
+            const allowedDomains = ['i.ibb.co', 'ibb.co', 'imgur.com', 'i.imgur.com'];
+            const isAllowed = allowedDomains.some(domain => parsed.hostname.includes(domain));
+            if (!isAllowed) {
+                return { valid: false, error: 'Please use imgbb.com or imgur.com for image hosting' };
+            }
+            return { valid: true, error: '' };
+        } catch {
+            return { valid: false, error: 'Invalid URL format' };
+        }
+    };
+
+    const handleImageUrlChange = (e) => {
+        const url = e.target.value;
+        setImageUrl(url);
+
+        if (url) {
+            const validation = validateImageUrl(url);
+            setImageError(validation.error);
+        } else {
+            setImageError('');
+        }
+    };
+
     const handleUpload = async () => {
         if (!imageUrl || !prodName || !prodPrice) {
             alert('Please fill all required fields (Name, Price, Image URL)');
             return;
         }
 
-        // Validate URL format
-        try {
-            new URL(imageUrl);
-        } catch {
-            alert('Please enter a valid image URL');
+        // Validate URL
+        const validation = validateImageUrl(imageUrl);
+        if (!validation.valid) {
+            setImageError(validation.error);
             return;
         }
-
 
         setUploading(true);
         try {
@@ -128,8 +159,10 @@ export default function Admin() {
             setProdPrice('');
             setProdDesc('');
             setImageUrl('');
+            setImageError('');
         } catch (e) {
-            alert("Error: " + (e.response?.data?.error || e.message));
+            const errorMsg = e.response?.data?.details?.join(', ') || e.response?.data?.error || e.message;
+            alert("Error: " + errorMsg);
         }
         setUploading(false);
     };
@@ -259,7 +292,7 @@ export default function Admin() {
                 ))}
             </div>
 
-            {/* Upload Product - Now with URL */}
+            {/* Upload Product - URL Input Only */}
             {activeTab === 'upload' && (
                 <div className="elegant-frame animate-fade-up bg-white dark:bg-onyx-900 border border-onyx-900/10 dark:border-white/10">
                     <h2 className="font-display text-xl text-onyx-900 dark:text-white mb-8 tracking-wide">
@@ -280,60 +313,50 @@ export default function Admin() {
                             <textarea placeholder="Describe the product..." value={prodDesc} onChange={e => setProdDesc(e.target.value)} rows={3} className="resize-none" />
                         </div>
                         <div>
-                            <p className="text-gray-500 text-sm uppercase tracking-wider mb-2">Product Image *</p>
-                            <div className="relative">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={async (e) => {
-                                        const file = e.target.files[0];
-                                        if (!file) return;
-
-                                        // Validate size (e.g. 5MB)
-                                        if (file.size > 5 * 1024 * 1024) {
-                                            alert("File too large (Max 5MB)");
-                                            return;
-                                        }
-
-                                        setUploading(true);
-                                        const formData = new FormData();
-                                        formData.append('file', file);
-
-                                        try {
-                                            const res = await ApiService.uploadFile(formData);
-                                            setImageUrl(res.data.url);
-                                        } catch (error) {
-                                            console.error("Upload failed", error);
-                                            alert("Image upload failed");
-                                        } finally {
-                                            setUploading(false);
-                                        }
-                                    }}
-                                    className="block w-full text-sm text-gray-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-full file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-gold-50 file:text-gold-700
-                                    hover:file:bg-gold-100"
-                                />
-                                {imageUrl && <p className="text-xs text-green-500 mt-2">✓ Image uploaded successfully</p>}
+                            <p className="text-gray-500 text-sm uppercase tracking-wider mb-2">Image URL *</p>
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type="url"
+                                        placeholder="https://i.ibb.co/xxxxx/image.jpg"
+                                        value={imageUrl}
+                                        onChange={handleImageUrlChange}
+                                        className={`pl-10 ${imageError ? 'border-red-400' : ''}`}
+                                    />
+                                </div>
+                                {imageError && (
+                                    <p className="text-red-400 text-xs flex items-center gap-1">
+                                        <AlertCircle size={12} /> {imageError}
+                                    </p>
+                                )}
+                                <p className="text-gray-500 text-xs">
+                                    Upload your image to <a href="https://imgbb.com" target="_blank" rel="noopener noreferrer" className="text-gold-400 hover:underline inline-flex items-center gap-1">imgbb.com <ExternalLink size={10} /></a> and paste the direct link here
+                                </p>
                             </div>
                         </div>
 
                         {/* Image Preview */}
-                        {imageUrl && (
-                            <div className="border border-white/10 p-4">
+                        {imageUrl && !imageError && (
+                            <div className="border border-white/10 p-4 rounded-lg">
                                 <p className="text-gray-500 text-sm uppercase tracking-wider mb-2">Preview</p>
                                 <img
                                     src={imageUrl}
                                     alt="Preview"
-                                    className="max-h-48 object-contain mx-auto"
-                                    onError={(e) => e.target.style.display = 'none'}
+                                    className="max-h-48 object-contain mx-auto rounded"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        setImageError('Could not load image - check URL');
+                                    }}
+                                    onLoad={(e) => {
+                                        e.target.style.display = 'block';
+                                        setImageError('');
+                                    }}
                                 />
                             </div>
                         )}
 
-                        <button onClick={handleUpload} disabled={uploading} className="w-full btn-filled mt-4">
+                        <button onClick={handleUpload} disabled={uploading || !!imageError} className="w-full btn-filled mt-4 disabled:opacity-50">
                             {uploading ? 'Saving...' : 'Save Product'}
                         </button>
                     </div>
