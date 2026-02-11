@@ -1,69 +1,71 @@
+// ===================================
+// /api/products — Catalogue CRUD
+// ===================================
+// GET    (public) → list all products
+// POST   (admin)  → add product (image via URL, no file upload)
+// DELETE (admin)  → remove product
+
 import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware, requireAdmin } from './lib/middleware.js';
-import { validateProduct, sanitizeString } from './lib/validators.js';
+import { validateProduct, clean } from './lib/validators.js';
 
-const handler = async (req, res) => {
-    // GET /api/products - Public endpoint
+async function handler(req, res) {
+
+    // ---- PUBLIC: List products ----
     if (req.method === 'GET') {
         try {
-            const snapshot = await getDb().collection('products').orderBy('created_at', 'desc').get();
-            const products = [];
-            snapshot.forEach(doc => {
-                products.push({ id: doc.id, ...doc.data() });
-            });
-            return res.status(200).json(products);
-        } catch (error) {
-            console.error('Products GET Error:', error);
+            const snap = await getDb().collection('products').orderBy('created_at', 'desc').get();
+            const list = [];
+            snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+            return res.status(200).json(list);
+        } catch (err) {
+            console.error('[products] GET error:', err);
             return res.status(500).json({ error: 'Failed to fetch products' });
         }
     }
 
-    // POST /api/products - Admin only
-    if (req.method === 'POST') {
-        if (!requireAdmin(req, res)) return;
+    // ---- ADMIN ONLY from here ----
+    if (!requireAdmin(req, res)) return;
 
-        const data = req.body;
-        const validationErrors = validateProduct(data);
-        if (validationErrors.length > 0) {
-            return res.status(400).json({ error: 'Validation failed', details: validationErrors });
+    // ---- ADMIN: Add product ----
+    if (req.method === 'POST') {
+        const errors = validateProduct(req.body);
+        if (errors.length) {
+            return res.status(400).json({ error: errors.join(', ') });
         }
 
         try {
-            const newProduct = {
-                name: sanitizeString(data.name),
-                price: Number(data.price),
-                description: sanitizeString(data.description || ''),
-                image_url: data.image_url.trim(), // Already validated by validateProduct
-                created_at: new Date().toISOString()
+            const doc = {
+                name: clean(req.body.name, 200),
+                price: Number(req.body.price),
+                description: clean(req.body.description || '', 1000),
+                image_url: req.body.image_url.trim(),
+                created_at: new Date().toISOString(),
             };
 
-            const docRef = await getDb().collection('products').add(newProduct);
-            console.log('✅ Product added:', docRef.id, newProduct.name);
-            return res.status(201).json({ id: docRef.id, ...newProduct });
-        } catch (error) {
-            console.error('Products POST Error:', error);
+            const ref = await getDb().collection('products').add(doc);
+            return res.status(201).json({ id: ref.id, ...doc });
+        } catch (err) {
+            console.error('[products] POST error:', err);
             return res.status(500).json({ error: 'Failed to add product' });
         }
     }
 
-    // DELETE /api/products?id=xyz - Admin only
+    // ---- ADMIN: Delete product ----
     if (req.method === 'DELETE') {
-        if (!requireAdmin(req, res)) return;
-
         const { id } = req.query;
-        if (!id) return res.status(400).json({ error: 'Missing product ID' });
+        if (!id) return res.status(400).json({ error: 'Missing product id' });
 
         try {
             await getDb().collection('products').doc(id).delete();
-            console.log('✅ Product deleted:', id);
             return res.status(200).json({ success: true });
-        } catch (error) {
-            console.error('Products DELETE Error:', error);
+        } catch (err) {
+            console.error('[products] DELETE error:', err);
             return res.status(500).json({ error: 'Failed to delete product' });
         }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-};
+}
 
 export default withMiddleware(handler);

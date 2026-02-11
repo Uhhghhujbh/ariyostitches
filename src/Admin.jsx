@@ -161,8 +161,7 @@ export default function Admin() {
             setImageUrl('');
             setImageError('');
         } catch (e) {
-            const errorMsg = e.response?.data?.details?.join(', ') || e.response?.data?.error || e.message;
-            alert("Error: " + errorMsg);
+            alert("Error: " + (e.message || 'Failed to add product'));
         }
         setUploading(false);
     };

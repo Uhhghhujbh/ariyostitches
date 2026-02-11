@@ -1,23 +1,33 @@
+// ===================================
+// /api/layaways — Layaway Plan Management
+// ===================================
+// GET  (public) → lookup by phone/email/id
+// POST (public) → create layaway
+// PUT  (public) → record a payment
+
 import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware } from './lib/middleware.js';
-import { sanitizeString } from './lib/validators.js';
+import { clean } from './lib/validators.js';
 
-const handler = async (req, res) => {
-    // GET /api/layaways?phone=x&email=y OR ?id=z
+async function handler(req, res) {
+
+    // ---- GET: Lookup layaway ----
     if (req.method === 'GET') {
         const { phone, email, id } = req.query;
 
+        // By ID
         if (id) {
             try {
-                const docRef = getDb().collection('layaways').doc(id);
-                const doc = await docRef.get();
+                const doc = await getDb().collection('layaways').doc(id).get();
                 if (!doc.exists) return res.status(404).json({ error: 'Layaway not found' });
                 return res.status(200).json({ id: doc.id, ...doc.data() });
-            } catch (error) {
+            } catch (err) {
+                console.error('[layaways] GET by ID error:', err.message);
                 return res.status(500).json({ error: 'Failed to fetch layaway' });
             }
         }
 
+        // By phone or email
         if (!phone && !email) {
             return res.status(400).json({ error: 'Phone, email, or ID required' });
         }
@@ -27,57 +37,54 @@ const handler = async (req, res) => {
             if (phone) query = query.where('customer.phone', '==', phone);
             else query = query.where('customer.email', '==', email);
 
-            const snapshot = await query.get();
-            const layaways = [];
-            snapshot.forEach(doc => layaways.push({ id: doc.id, ...doc.data() }));
+            const snap = await query.get();
+            const list = [];
+            snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+            list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-            // Sort manually since we did a where query
-            layaways.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-            return res.status(200).json(layaways);
-        } catch (error) {
+            return res.status(200).json(list);
+        } catch (err) {
+            console.error('[layaways] GET error:', err.message);
             return res.status(500).json({ error: 'Failed to fetch layaways' });
         }
     }
 
-    // POST /api/layaways (Create)
+    // ---- POST: Create layaway ----
     if (req.method === 'POST') {
-        const data = req.body;
-
-        // Basic validation
-        if (!data.totalAmount || !data.customer || !data.service) {
+        const { totalAmount, customer, service } = req.body;
+        if (!totalAmount || !customer || !service) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
         try {
-            const newLayaway = {
+            const doc = {
                 service: {
-                    name: sanitizeString(data.service.name),
-                    description: sanitizeString(data.service.description)
+                    name: clean(service.name, 200),
+                    description: clean(service.description || '', 500),
                 },
                 customer: {
-                    name: sanitizeString(data.customer.name),
-                    email: data.customer.email,
-                    phone: data.customer.phone
+                    name: clean(customer.name, 100),
+                    email: customer.email,
+                    phone: customer.phone || '',
                 },
-                totalAmount: Number(data.totalAmount),
+                totalAmount: Number(totalAmount),
                 paidAmount: 0,
-                remainingAmount: Number(data.totalAmount),
+                remainingAmount: Number(totalAmount),
                 payments: [],
                 status: 'active',
                 createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
             };
 
-            const docRef = await getDb().collection('layaways').add(newLayaway);
-            return res.status(201).json({ id: docRef.id, ...newLayaway });
-        } catch (error) {
+            const ref = await getDb().collection('layaways').add(doc);
+            return res.status(201).json({ id: ref.id, ...doc });
+        } catch (err) {
+            console.error('[layaways] POST error:', err.message);
             return res.status(500).json({ error: 'Failed to create layaway' });
         }
     }
 
-
-    // PUT /api/layaways?id=xyz (Record Payment)
+    // ---- PUT: Record payment ----
     if (req.method === 'PUT') {
         const { id } = req.query;
         const { amount, paymentRef } = req.body;
@@ -87,40 +94,35 @@ const handler = async (req, res) => {
         }
 
         try {
-            const layawayRef = getDb().collection('layaways').doc(id);
-            const layawayDoc = await layawayRef.get();
+            const docRef = getDb().collection('layaways').doc(id);
+            const doc = await docRef.get();
+            if (!doc.exists) return res.status(404).json({ error: 'Layaway not found' });
 
-            if (!layawayDoc.exists) {
-                return res.status(404).json({ error: 'Layaway not found' });
-            }
+            const data = doc.data();
+            const newPaid = data.paidAmount + Number(amount);
+            const newRemaining = data.totalAmount - newPaid;
+            const completed = newRemaining <= 0;
 
-            const layaway = layawayDoc.data();
-
-            const newPaidAmount = layaway.paidAmount + Number(amount);
-            const newRemainingAmount = layaway.totalAmount - newPaidAmount;
-            const isCompleted = newRemainingAmount <= 0;
-
-            const newPayment = {
-                amount: Number(amount),
-                paymentRef,
-                date: new Date().toISOString()
-            };
-
-            await layawayRef.update({
-                paidAmount: newPaidAmount,
-                remainingAmount: Math.max(0, newRemainingAmount),
-                payments: [...(layaway.payments || []), newPayment],
-                status: isCompleted ? 'completed' : 'active',
-                updatedAt: new Date().toISOString()
+            await docRef.update({
+                paidAmount: newPaid,
+                remainingAmount: Math.max(0, newRemaining),
+                payments: [...(data.payments || []), {
+                    amount: Number(amount),
+                    paymentRef,
+                    date: new Date().toISOString(),
+                }],
+                status: completed ? 'completed' : 'active',
+                updatedAt: new Date().toISOString(),
             });
 
-            return res.status(200).json({ success: true, completed: isCompleted });
-        } catch (error) {
+            return res.status(200).json({ success: true, completed });
+        } catch (err) {
+            console.error('[layaways] PUT error:', err.message);
             return res.status(500).json({ error: 'Failed to record payment' });
         }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-};
+}
 
 export default withMiddleware(handler);

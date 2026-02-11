@@ -1,123 +1,129 @@
+// ===================================
+// /api/orders — Order Management
+// ===================================
+// POST (public)  → create order (after payment verification)
+// GET  (public)  → get single order by ID (receipt)
+// PUT  (admin)   → update order status/scanned
+
 import axios from 'axios';
 import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware, requireAdmin } from './lib/middleware.js';
-import { validateOrder, sanitizeString } from './lib/validators.js';
+import { validateOrder, clean } from './lib/validators.js';
 
-const handler = async (req, res) => {
-    // POST /api/orders (Create Order)
+async function handler(req, res) {
+
+    // ---- Create order (after payment) ----
     if (req.method === 'POST') {
-        const data = req.body;
-        const validationErrors = validateOrder(data);
-        if (validationErrors.length > 0) {
-            return res.status(400).json({ error: 'Validation failed', details: validationErrors });
+        const errors = validateOrder(req.body);
+        if (errors.length) {
+            return res.status(400).json({ error: errors.join(', ') });
         }
 
-        // Verify Payment first
         try {
-            const flwResponse = await axios.get(
-                `https://api.flutterwave.com/v3/transactions/${data.paymentRef}/verify`,
-                {
-                    headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` }
-                }
+            // Verify payment with Flutterwave
+            const flwRes = await axios.get(
+                `https://api.flutterwave.com/v3/transactions/${req.body.paymentRef}/verify`,
+                { headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` } }
             );
 
-            const { status, data: txData } = flwResponse.data;
-            if (status !== 'success' || txData.status !== 'successful' || txData.amount < data.total) {
-                return res.status(400).json({ error: 'Payment verification failed or amount mismatch' });
+            const tx = flwRes.data;
+            if (tx.status !== 'success' || tx.data.status !== 'successful' || tx.data.amount < req.body.total) {
+                return res.status(400).json({ error: 'Payment verification failed' });
             }
 
-            // Create Order
-            const newOrder = {
+            const doc = {
                 customer: {
-                    name: sanitizeString(data.customer.name),
-                    email: data.customer.email,
-                    phone: sanitizeString(data.customer.phone)
+                    name: clean(req.body.customer.name, 100),
+                    email: req.body.customer.email,
+                    phone: clean(req.body.customer.phone || '', 20),
                 },
-                items: data.items.map(item => ({
+                items: req.body.items.map(item => ({
                     id: item.id,
-                    name: sanitizeString(item.name),
+                    name: clean(item.name, 200),
                     price: Number(item.price),
-                    image_url: item.image_url,
-                    description: sanitizeString(item.description || '')
+                    image_url: item.image_url || '',
+                    description: clean(item.description || '', 500),
                 })),
-                total: Number(data.total),
-                paymentRef: data.paymentRef,
-                flwRef: data.flwRef,
+                total: Number(req.body.total),
+                paymentRef: req.body.paymentRef,
+                flwRef: req.body.flwRef || '',
                 date: new Date().toISOString(),
                 status: 'Paid',
-                scanned: false
+                scanned: false,
             };
 
-            const docRef = await getDb().collection('orders').add(newOrder);
-            return res.status(201).json({ id: docRef.id, ...newOrder });
-
-        } catch (error) {
-            console.error('Order Creation Error:', error);
+            const ref = await getDb().collection('orders').add(doc);
+            return res.status(201).json({ id: ref.id, ...doc });
+        } catch (err) {
+            console.error('[orders] POST error:', err.message);
             return res.status(500).json({ error: 'Failed to create order' });
         }
     }
 
-    // GET /api/orders?id=:id (Public Receipt)
+    // ---- Get order by ID (public receipt) ----
     if (req.method === 'GET') {
         const { id } = req.query;
-        if (id) {
-            try {
-                const docRef = getDb().collection('orders').doc(id);
-                const doc = await docRef.get();
-
-                if (!doc.exists) {
-                    // Check layaways if not found in orders
-                    const layawayRef = getDb().collection('layaways').doc(id);
-                    const layawayDoc = await layawayRef.get();
-                    if (layawayDoc.exists) {
-                        return res.status(200).json({ type: 'layaway', id: layawayDoc.id, ...layawayDoc.data() });
-                    }
-                    return res.status(404).json({ error: 'Order not found' });
-                }
-
-                return res.status(200).json({ type: 'order', id: doc.id, ...doc.data() });
-            } catch (error) {
-                return res.status(500).json({ error: 'Failed to fetch order' });
-            }
-        }
-        // If no ID, continue to admin check (for listing all orders, if implemented later, or just fail)
-    }
-
-    // AUTH REQUIRED FOR ADMIN ACTIONS
-    if (!requireAdmin(req, res)) return;
-
-    // PUT /api/admin/orders/:id (Update Status/Scanned)
-    if (req.method === 'PUT') {
-        const { id } = req.query;
-        const { scanned, status } = req.body;
-
-        if (!id) return res.status(400).json({ error: 'Missing ID' });
+        if (!id) return res.status(400).json({ error: 'Order ID required' });
 
         try {
-            // Check order first
-            const orderRef = getDb().collection('orders').doc(id);
-            const orderDoc = await orderRef.get();
-
+            // Check orders first
+            const orderDoc = await getDb().collection('orders').doc(id).get();
             if (orderDoc.exists) {
-                await orderRef.update({ ...(scanned !== undefined && { scanned }), ...(status && { status }) });
+                return res.status(200).json({ type: 'order', id: orderDoc.id, ...orderDoc.data() });
+            }
+
+            // Check layaways
+            const layDoc = await getDb().collection('layaways').doc(id).get();
+            if (layDoc.exists) {
+                return res.status(200).json({ type: 'layaway', id: layDoc.id, ...layDoc.data() });
+            }
+
+            return res.status(404).json({ error: 'Order not found' });
+        } catch (err) {
+            console.error('[orders] GET error:', err.message);
+            return res.status(500).json({ error: 'Failed to fetch order' });
+        }
+    }
+
+    // ---- ADMIN: Update order ----
+    if (req.method === 'PUT') {
+        if (!requireAdmin(req, res)) return;
+
+        const { id } = req.query;
+        if (!id) return res.status(400).json({ error: 'Missing id' });
+
+        const { scanned, status } = req.body;
+        const update = {};
+        if (scanned !== undefined) update.scanned = Boolean(scanned);
+        if (status) update.status = clean(status, 50);
+
+        if (Object.keys(update).length === 0) {
+            return res.status(400).json({ error: 'Nothing to update' });
+        }
+
+        try {
+            // Try orders first
+            const orderDoc = await getDb().collection('orders').doc(id).get();
+            if (orderDoc.exists) {
+                await getDb().collection('orders').doc(id).update(update);
                 return res.status(200).json({ success: true });
             }
 
-            // Check layaway
-            const layawayRef = getDb().collection('layaways').doc(id);
-            const layawayDoc = await layawayRef.get();
-            if (layawayDoc.exists) {
-                await layawayRef.update({ ...(scanned !== undefined && { scanned }) });
+            // Try layaways
+            const layDoc = await getDb().collection('layaways').doc(id).get();
+            if (layDoc.exists) {
+                await getDb().collection('layaways').doc(id).update(update);
                 return res.status(200).json({ success: true });
             }
 
             return res.status(404).json({ error: 'Order not found' });
-        } catch (error) {
-            return res.status(500).json({ error: 'Update failed' });
+        } catch (err) {
+            console.error('[orders] PUT error:', err.message);
+            return res.status(500).json({ error: 'Failed to update order' });
         }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-};
+}
 
 export default withMiddleware(handler);

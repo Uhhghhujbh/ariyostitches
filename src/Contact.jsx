@@ -29,26 +29,18 @@ export default function Contact() {
         e.preventDefault();
         if (!validate()) return;
 
-        // Rate limiting check
+        setSending(true);
         try {
-            await security.rateLimitedAction(async () => {
-                setSending(true);
-
-                // Send via API
-                await ApiService.sendMessage({
-                    name: form.name,
-                    email: form.email,
-                    phone: form.phone,
-                    message: form.message
-                });
-
-                setSent(true);
-                setForm({ name: '', email: '', phone: '', message: '' });
-            }, 'api');
+            await ApiService.sendMessage({
+                name: form.name,
+                email: form.email,
+                phone: form.phone,
+                message: form.message,
+            });
+            setSent(true);
+            setForm({ name: '', email: '', phone: '', message: '' });
         } catch (error) {
-            console.error('Submission Error:', error.response?.data || error);
-            const detail = error.response?.data?.details || error.message;
-            alert(`Failed to send message: ${detail}`);
+            alert(error.message || 'Failed to send message');
         } finally {
             setSending(false);
         }

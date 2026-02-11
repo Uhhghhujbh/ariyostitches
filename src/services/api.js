@@ -1,15 +1,19 @@
+// ===================================
+// Frontend API Service Layer
+// ===================================
+// All API calls go through this single file.
+// Axios interceptor auto-attaches Firebase auth token.
 
 import axios from 'axios';
 import { auth } from '../firebase-config';
 
 const api = axios.create({
     baseURL: '/api',
-    headers: {
-        'Content-Type': 'application/json'
-    }
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 15000, // 15 second timeout
 });
 
-// Request interceptor to add Firebase ID Token
+// Auto-attach Firebase ID token to every request
 api.interceptors.request.use(async (config) => {
     try {
         const user = auth.currentUser;
@@ -17,29 +21,36 @@ api.interceptors.request.use(async (config) => {
             const token = await user.getIdToken();
             config.headers.Authorization = `Bearer ${token}`;
         }
-    } catch (error) {
-        console.error('Error fetching token', error);
+    } catch {
+        // No token — public request
     }
     return config;
-}, (error) => {
-    return Promise.reject(error);
 });
 
-// API Methods
+// Normalize error responses
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const message = error.response?.data?.error || error.message || 'Something went wrong';
+        return Promise.reject(new Error(message));
+    }
+);
+
+// ---- API Methods ----
 export const ApiService = {
     // Products
     getProducts: () => api.get('/products'),
-    addProduct: (productData) => api.post('/products', productData),
+    addProduct: (data) => api.post('/products', data),
     deleteProduct: (id) => api.delete(`/products?id=${id}`),
 
     // Orders
-    createOrder: (orderData) => api.post('/orders', orderData),
+    createOrder: (data) => api.post('/orders', data),
     getOrder: (id) => api.get(`/orders?id=${id}`),
     verifyOrder: (id) => api.get(`/orders?id=${id}`),
     updateOrderStatus: (id, status, scanned) => api.put(`/orders?id=${id}`, { status, scanned }),
 
-    // Messages
-    sendMessage: (msgData) => api.post('/messages', msgData),
+    // Messages (contact form)
+    sendMessage: (data) => api.post('/messages', data),
     getMessages: () => api.get('/messages'),
     markMessageRead: (id) => api.put(`/messages?id=${id}`),
     deleteMessage: (id) => api.delete(`/messages?id=${id}`),
@@ -48,10 +59,10 @@ export const ApiService = {
     getLayaways: (phone, email) => api.get(`/layaways?phone=${phone || ''}&email=${email || ''}`),
     getLayawayById: (id) => api.get(`/layaways?id=${id}`),
     createLayaway: (data) => api.post('/layaways', data),
-    recordPayment: (id, paymentData) => api.put(`/layaways?id=${id}`, paymentData),
+    recordPayment: (id, data) => api.put(`/layaways?id=${id}`, data),
 
-    // Validate Image URL (optional helper)
-    validateImageUrl: (url) => api.post('/upload', { image_url: url })
+    // Payment verification
+    verifyPayment: (txId) => api.post('/verify-payment', { transaction_id: txId }),
 };
 
 export default api;

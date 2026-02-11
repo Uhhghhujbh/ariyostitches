@@ -1,84 +1,87 @@
+// ===================================
+// /api/messages — Contact Form + Admin CRUD
+// ===================================
+// POST   (public)  → submit a contact message
+// GET    (admin)   → list all messages
+// PUT    (admin)   → mark message as read
+// DELETE (admin)   → delete a message
 
 import { getDb } from './lib/firebase-admin.js';
 import { withMiddleware, requireAdmin } from './lib/middleware.js';
-import { validateEmail, sanitizeString } from './lib/validators.js';
+import { validateMessage, clean } from './lib/validators.js';
 
-const handler = async (req, res) => {
-    // POST /api/messages (Submit Message)
+async function handler(req, res) {
+
+    // ---- PUBLIC: Submit message ----
     if (req.method === 'POST') {
-        const { name, email, phone, message } = req.body;
-
-        if (!name || !email || !message) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-        if (!validateEmail(email)) {
-            return res.status(400).json({ error: 'Invalid email' });
+        const errors = validateMessage(req.body);
+        if (errors.length) {
+            return res.status(400).json({ error: errors.join(', ') });
         }
 
         try {
-            const newMessage = {
-                name: sanitizeString(name),
-                email: email,
-                phone: sanitizeString(phone),
-                message: sanitizeString(message),
+            const doc = {
+                name: clean(req.body.name, 100),
+                email: req.body.email.trim().toLowerCase(),
+                phone: clean(req.body.phone || '', 20),
+                message: clean(req.body.message, 2000),
                 createdAt: new Date().toISOString(),
-                read: false
+                read: false,
             };
 
-            const docRef = await getDb().collection('messages').add(newMessage);
-            return res.status(201).json({ id: docRef.id, message: 'Message sent successfully' });
-        } catch (error) {
-            console.error('Message Submission Error:', error);
-            return res.status(500).json({
-                error: 'Failed to send message',
-                details: error.message,
-                code: error.code
-            });
+            const ref = await getDb().collection('messages').add(doc);
+            return res.status(201).json({ id: ref.id, success: true });
+        } catch (err) {
+            console.error('[messages] POST error:', err);
+            return res.status(500).json({ error: 'Failed to send message' });
         }
     }
 
-    // AUTH REQUIRED FOR REMAINING METHODS
+    // ---- ADMIN ONLY from here ----
     if (!requireAdmin(req, res)) return;
 
-    // GET /api/messages (List all)
+    // ---- ADMIN: List messages ----
     if (req.method === 'GET') {
         try {
-            const snapshot = await getDb().collection('messages').orderBy('createdAt', 'desc').get();
-            const messages = [];
-            snapshot.forEach(doc => messages.push({ id: doc.id, ...doc.data() }));
-            return res.status(200).json(messages);
-        } catch (error) {
-            return res.status(500).json({ error: error.message });
+            const snap = await getDb().collection('messages').orderBy('createdAt', 'desc').get();
+            const list = [];
+            snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+            return res.status(200).json(list);
+        } catch (err) {
+            console.error('[messages] GET error:', err);
+            return res.status(500).json({ error: 'Failed to fetch messages' });
         }
     }
 
-    // PUT /api/messages?id=xyz (Mark as Read)
+    // ---- ADMIN: Mark as read ----
     if (req.method === 'PUT') {
         const { id } = req.query;
-        if (!id) return res.status(400).json({ error: 'Missing ID' });
+        if (!id) return res.status(400).json({ error: 'Missing id' });
 
         try {
             await getDb().collection('messages').doc(id).update({ read: true });
             return res.status(200).json({ success: true });
-        } catch (error) {
-            return res.status(500).json({ error: 'Failed to update message' });
+        } catch (err) {
+            console.error('[messages] PUT error:', err);
+            return res.status(500).json({ error: 'Failed to update' });
         }
     }
 
-    // DELETE /api/messages?id=xyz
+    // ---- ADMIN: Delete message ----
     if (req.method === 'DELETE') {
         const { id } = req.query;
-        if (!id) return res.status(400).json({ error: 'Missing ID' });
+        if (!id) return res.status(400).json({ error: 'Missing id' });
 
         try {
             await getDb().collection('messages').doc(id).delete();
             return res.status(200).json({ success: true });
-        } catch (error) {
-            return res.status(500).json({ error: 'Failed to delete message' });
+        } catch (err) {
+            console.error('[messages] DELETE error:', err);
+            return res.status(500).json({ error: 'Failed to delete' });
         }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-};
+}
 
 export default withMiddleware(handler);

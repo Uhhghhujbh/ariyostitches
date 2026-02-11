@@ -21,11 +21,8 @@ class ErrorBoundary extends React.Component {
     componentDidCatch(error, errorInfo) {
         this.setState({ error, errorInfo });
 
-        // Log error in production
         console.error('[ErrorBoundary] Caught error:', error, errorInfo);
 
-        // Could send to error reporting service
-        // logError('app.error.boundary', { error: error.message, stack: errorInfo.componentStack });
     }
 
     handleReload = () => {
