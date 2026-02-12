@@ -2,12 +2,6 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // 🔒 ARCHITECTURE: API-ONLY
-    // Your Vercel API (Admin SDK) bypasses these rules automatically.
-    // We deny ALL client-side access to prevent hackers from 
-    // reading/writing directly from the browser console.
-
     match /{document=**} {
       allow read, write: if false;
     }

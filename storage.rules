@@ -1,10 +1,7 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // 🔒 STRICT SECURITY: DENY ALL PUBLIC ACCESS
-    // All storage operations are strictly handled by Vercel 
-    // Serverless Functions using the Firebase Admin SDK.
-    
     match /{allPaths=**} {
       allow read, write: if false;
     }

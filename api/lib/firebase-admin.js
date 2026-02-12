@@ -1,18 +1,9 @@
-// ===================================
-// Firebase Admin SDK — Singleton Init
-// ===================================
-// RULE: Backend NEVER uses VITE_ prefixed vars.
-// Those are for the frontend (Vite injects them).
-// Backend uses: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
-
 import admin from 'firebase-admin';
 
-// ---- Read env vars (backend-only names) ----
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 const CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
 const PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY;
 
-// ---- Init once ----
 if (!admin.apps.length) {
     if (!PROJECT_ID || !CLIENT_EMAIL || !PRIVATE_KEY) {
         const missing = [];
@@ -36,8 +27,6 @@ if (!admin.apps.length) {
     }
 }
 
-// ---- Exports ----
-// Safe getters: throw descriptive error if SDK not initialized
 export function getDb() {
     if (!admin.apps.length) throw new Error('Firebase not initialized');
     return admin.firestore();

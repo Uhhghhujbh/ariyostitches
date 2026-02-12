@@ -1,31 +1,17 @@
-/**
- * Zero Trust Network (ZTN) Module
- * Implements zero trust security principles
- */
-
 const ZTN_STORAGE_KEY = 'ariyo_ztn_session';
 
-/**
- * Generate device fingerprint for identification
- */
 export const generateFingerprint = async () => {
-    const components = [];
+    const components = [
+        navigator.userAgent,
+        navigator.language,
+        navigator.platform,
+        new Date().getTimezoneOffset().toString(),
+        window.screen.width.toString(),
+        window.screen.height.toString(),
+        window.screen.colorDepth.toString(),
+        navigator.hardwareConcurrency?.toString() || 'unknown',
+    ];
 
-    // Browser info
-    components.push(navigator.userAgent);
-    components.push(navigator.language);
-    components.push(navigator.platform);
-    components.push(new Date().getTimezoneOffset().toString());
-
-    // Screen info
-    components.push(window.screen.width.toString());
-    components.push(window.screen.height.toString());
-    components.push(window.screen.colorDepth.toString());
-
-    // Hardware concurrency
-    components.push(navigator.hardwareConcurrency?.toString() || 'unknown');
-
-    // WebGL renderer (if available)
     try {
         const canvas = document.createElement('canvas');
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
@@ -36,11 +22,10 @@ export const generateFingerprint = async () => {
                 components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
             }
         }
-    } catch (e) {
+    } catch {
         components.push('webgl-unavailable');
     }
 
-    // Create hash
     const fingerprint = components.join('|');
     const encoder = new TextEncoder();
     const data = encoder.encode(fingerprint);
@@ -50,14 +35,10 @@ export const generateFingerprint = async () => {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     } catch {
-        // Fallback for older browsers
         return btoa(fingerprint).substring(0, 32);
     }
 };
 
-/**
- * Session management with continuous validation
- */
 class ZTNSession {
     constructor() {
         this.sessionId = null;
@@ -65,16 +46,13 @@ class ZTNSession {
         this.createdAt = null;
         this.lastActivity = null;
         this.validationInterval = null;
-        this.maxInactivity = 30 * 60 * 1000; // 30 minutes
-        this.sessionDuration = 24 * 60 * 60 * 1000; // 24 hours max
+        this.maxInactivity = 30 * 60 * 1000;
+        this.sessionDuration = 24 * 60 * 60 * 1000;
     }
 
     async initialize() {
         this.fingerprint = await generateFingerprint();
-
-        // Load existing session
         const stored = this.loadSession();
-
         if (stored && this.validateStoredSession(stored)) {
             this.sessionId = stored.sessionId;
             this.createdAt = stored.createdAt;
@@ -83,10 +61,7 @@ class ZTNSession {
         } else {
             this.createNewSession();
         }
-
-        // Start continuous validation
         this.startValidation();
-
         return this;
     }
 
@@ -96,30 +71,13 @@ class ZTNSession {
         this.createdAt = Date.now();
         this.lastActivity = Date.now();
         this.save();
-        console.log('[ZTN] New session created');
     }
 
     validateStoredSession(stored) {
         const now = Date.now();
-
-        // Check fingerprint match
-        if (stored.fingerprint !== this.fingerprint) {
-            console.warn('[ZTN] Fingerprint mismatch - potential session hijacking');
-            return false;
-        }
-
-        // Check session age
-        if (now - stored.createdAt > this.sessionDuration) {
-            console.log('[ZTN] Session expired by age');
-            return false;
-        }
-
-        // Check inactivity
-        if (now - stored.lastActivity > this.maxInactivity) {
-            console.log('[ZTN] Session expired by inactivity');
-            return false;
-        }
-
+        if (stored.fingerprint !== this.fingerprint) return false;
+        if (now - stored.createdAt > this.sessionDuration) return false;
+        if (now - stored.lastActivity > this.maxInactivity) return false;
         return true;
     }
 
@@ -138,11 +96,9 @@ class ZTNSession {
                 sessionId: this.sessionId,
                 fingerprint: this.fingerprint,
                 createdAt: this.createdAt,
-                lastActivity: this.lastActivity
+                lastActivity: this.lastActivity,
             }));
-        } catch {
-            // Storage might be unavailable
-        }
+        } catch { }
     }
 
     recordActivity() {
@@ -151,29 +107,15 @@ class ZTNSession {
     }
 
     startValidation() {
-        // Validate every 5 minutes
         this.validationInterval = setInterval(() => {
-            if (!this.validate()) {
-                this.terminate();
-            }
+            if (!this.validate()) this.terminate();
         }, 5 * 60 * 1000);
     }
 
     validate() {
         const now = Date.now();
-
-        // Check inactivity
-        if (now - this.lastActivity > this.maxInactivity) {
-            console.warn('[ZTN] Session invalid due to inactivity');
-            return false;
-        }
-
-        // Check session duration
-        if (now - this.createdAt > this.sessionDuration) {
-            console.warn('[ZTN] Session expired');
-            return false;
-        }
-
+        if (now - this.lastActivity > this.maxInactivity) return false;
+        if (now - this.createdAt > this.sessionDuration) return false;
         return true;
     }
 
@@ -181,9 +123,6 @@ class ZTNSession {
         clearInterval(this.validationInterval);
         localStorage.removeItem(ZTN_STORAGE_KEY);
         this.sessionId = null;
-        console.log('[ZTN] Session terminated');
-
-        // Trigger event for app to handle
         window.dispatchEvent(new CustomEvent('ztn-session-expired'));
     }
 
@@ -193,23 +132,17 @@ class ZTNSession {
             fingerprint: this.fingerprint?.substring(0, 8) + '...',
             createdAt: new Date(this.createdAt),
             lastActivity: new Date(this.lastActivity),
-            valid: this.validate()
+            valid: this.validate(),
         };
     }
 }
 
-// Singleton instance
 let ztnSession = null;
 
-/**
- * Initialize ZTN session
- */
 export const initZTN = async () => {
     if (!ztnSession) {
         ztnSession = new ZTNSession();
         await ztnSession.initialize();
-
-        // Track user activity
         ['click', 'keypress', 'scroll', 'touchstart'].forEach(event => {
             document.addEventListener(event, () => ztnSession?.recordActivity(), { passive: true });
         });
@@ -223,13 +156,4 @@ export const getSessionInfo = () => ztnSession?.getSessionInfo() ?? null;
 export const terminateSession = () => ztnSession?.terminate();
 
 export { ZTNSession };
-
-export default {
-    ZTNSession,
-    generateFingerprint,
-    initZTN,
-    getZTNSession,
-    validateSession,
-    getSessionInfo,
-    terminateSession
-};
+export default { ZTNSession, generateFingerprint, initZTN, getZTNSession, validateSession, getSessionInfo, terminateSession };

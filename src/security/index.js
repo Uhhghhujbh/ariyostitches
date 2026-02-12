@@ -1,8 +1,3 @@
-/**
- * Security Module Index
- * Central export for all security features
- */
-
 export * from './bruteForce';
 export * from './cors';
 export * from './helmet';
@@ -11,7 +6,6 @@ export * from './sanitizer';
 export * from './envValidator';
 export * from './auditLogger';
 
-// Default exports combined
 import bruteForce from './bruteForce';
 import cors from './cors';
 import helmet from './helmet';
@@ -22,12 +16,4 @@ import auditLogger from './auditLogger';
 
 export { default as ErrorBoundary } from './ErrorBoundary';
 
-export default {
-    bruteForce,
-    cors,
-    helmet,
-    ztn,
-    sanitizer,
-    envValidator,
-    auditLogger
-};
+export default { bruteForce, cors, helmet, ztn, sanitizer, envValidator, auditLogger };
