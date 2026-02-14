@@ -13,11 +13,15 @@ if (!admin.apps.length) {
         console.error('[FATAL] Missing env vars:', missing.join(', '));
     } else {
         try {
+            const key = PRIVATE_KEY.includes('\\n')
+                ? PRIVATE_KEY.replace(/\\n/g, '\n')
+                : PRIVATE_KEY;
+
             admin.initializeApp({
                 credential: admin.credential.cert({
                     projectId: PROJECT_ID,
                     clientEmail: CLIENT_EMAIL,
-                    privateKey: PRIVATE_KEY.replace(/\\n/g, '\n'),
+                    privateKey: key,
                 }),
             });
             console.log('[OK] Firebase Admin ready — project:', PROJECT_ID);
@@ -28,12 +32,12 @@ if (!admin.apps.length) {
 }
 
 export function getDb() {
-    if (!admin.apps.length) throw new Error('Firebase not initialized');
+    if (!admin.apps.length) throw new Error('Firebase not initialized — check env vars');
     return admin.firestore();
 }
 
 export function getAuth() {
-    if (!admin.apps.length) throw new Error('Firebase not initialized');
+    if (!admin.apps.length) throw new Error('Firebase not initialized — check env vars');
     return admin.auth();
 }
 

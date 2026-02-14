@@ -19,15 +19,16 @@ function rateLimit(ip, limit = MAX_PUBLIC) {
         return true;
     }
     entry.count++;
-    return entry.count <= limit;
-}
-
-setInterval(() => {
-    const now = Date.now();
-    for (const [ip, entry] of hits) {
-        if (now > entry.reset) hits.delete(ip);
+    if (entry.count > limit) {
+        if (hits.size > 500) {
+            for (const [k, v] of hits) {
+                if (now > v.reset) hits.delete(k);
+            }
+        }
+        return false;
     }
-}, 300_000);
+    return true;
+}
 
 function setCors(req, res) {
     const allowedOrigins = [
@@ -63,8 +64,8 @@ export function withMiddleware(handler) {
 
         try {
             if (!admin.apps.length) {
-                console.error('[API] Firebase Admin not initialized');
-                return res.status(503).json({ error: 'Service unavailable' });
+                console.error('[API] Firebase Admin not initialized — missing env vars on Vercel');
+                return res.status(503).json({ error: 'Service temporarily unavailable' });
             }
 
             const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
@@ -89,7 +90,7 @@ export function withMiddleware(handler) {
 
             return await handler(req, res);
         } catch (err) {
-            console.error('[API] Unhandled error:', err);
+            console.error('[API] Error in', req.url, ':', err.message || err);
             return res.status(500).json({ error: 'Internal server error' });
         }
     };
